@@ -1,0 +1,243 @@
+<?php
+/*
+ * Model for module parsing, publishing, retrieval and rendering.
+ *
+ * Copyright (C) 2020-2021 J.M. Heisz.  All Rights Reserved.
+ * See the LICENSE file accompanying the distribution your rights to use
+ * this software.
+ */
+
+namespace Pathways;
+
+require_once('unit.lib');
+
+/**
+ * Container and functional entry point for procesing module data.
+ */
+class Module {
+    public $id, $icon, $title, $synopsis, $inPreview, $time, $points, $units;
+    public $completed;
+
+    /**
+     * Main constructor either consumes an XML document node for definition or
+     * a module identifier to load from the database.
+     *
+     * @param src Either the XML source or the identifier of the path to load.
+     */
+    public function __construct($src = null) {
+        if ($src instanceof \SimpleXMLElement) {
+            $this->_xmlConstruct($src);
+        } else if (isset($src)) {
+            $this->_pdoConstruct($src);
+        }
+        /* Fallthrough is a null constructor for static population */
+    }
+
+    /* Internal method to load the module instance from the database by id */
+    private function _pdoConstruct($id) {
+        global $UserId;
+        $schema = \Database::schema();
+
+        /* Query the core unit data, validating existence */
+        $qryStmt = \Database::prepare('SELECT md.module_id, md.title, ' .
+                                             'md.synopsis, md.in_preview, ' .
+                                             'md.est_time, md.points, ' .
+                                             'bdg.completed ' .
+                                      'FROM ' . $schema . 'modules AS md ' .
+                                      'LEFT JOIN ' . $schema. 'badges AS bdg ' .
+                                          'ON md.module_id=bdg.module_id AND ' .
+                                             'bdg.user_id=? ' .
+                                      'WHERE md.module_id=?');
+        $qryStmt->execute([ $UserId, $id ]);
+        $res = $qryStmt->fetchAll();
+        if (count($res) != 1) return;
+        $this->id = $id;
+        $this->title = $res[0][1];
+        $this->synopsis = $res[0][2];
+        $this->inPreview = $res[0][3];
+        $this->time = $res[0][4];
+        $this->points = $res[0][5];
+        $this->completed = $res[0][6];
+    }
+
+    /* Internal method to construct the module instance from an XML node */
+    private function _xmlConstruct($node) {
+        /* Validate/extract the core module attributes */
+        if ((null == ($this->id = $node['id'])) ||
+              (null == ($this->icon = $node['icon'])) ||
+              (null == ($this->title = $node['title'])) ||
+              (null == ($this->synopsis = $node['synopsis']))) {
+            throw new \ErrorException(
+                           'Missing required XML attributes for <Module>');
+        }
+
+        /* Only children can be units */
+        $this->units = [];
+        foreach ($node->children() as $child) {
+            if ($child->getName() == 'Unit') {
+                array_push($this->units, new Unit($child, $this->id));
+            } else {
+                throw new \ErrorException(
+                           'Invalid child, <Module> can only contain <Unit>');
+            }
+        }
+
+        /* Aggregate unit totals */
+        $this->time = $this->points = 0;
+        foreach ($this->units as $unit) {
+            $this->time += $unit->time;
+            $this->points += $unit->points;
+        }
+    }
+
+    /**
+     * Publish the underlying module content to the data and image stores.
+     */
+    public function publish() {
+        global $GlobalConfig, $BadgesDir;
+        $schema = \Database::schema();
+
+        /* Push the static badge instance */
+        if (!copy($this->icon, $BadgesDir . '/' . $this->id . '.png')) {
+            throw new \ErrorException('Failed to public module icon');
+        }
+
+        /* Simulated upsert, presuming external transaction management */
+        $qryStmt = \Database::prepare('SELECT module_id ' .
+                                      'FROM ' . $schema . 'modules ' .
+                                      'WHERE module_id=? FOR UPDATE');
+        $qryStmt->execute([ $this->id ]);
+        $preview = ($this->inPreview) ? 't' : 'f';
+        if (count($qryStmt->fetchAll()) != 0) {
+            $updStmt = \Database::prepare('UPDATE ' . $schema . 'modules ' .
+                                          'SET icon=?, title=?, synopsis=?, ' .
+                                              'in_preview=?, ' .
+                                              'last_update=NOW() ' .
+                                          'WHERE module_id=?');
+            $updStmt->execute([ $this->icon, $this->title, $this->synopsis,
+                                $preview, $this->id ]);
+            if ($updStmt->rowCount() != 1) {
+                throw new \ErrorException(
+                               'Failed to update path, target not found?');
+            }
+        } else {
+            $insStmt = \Database::prepare('INSERT INTO ' . $schema . 'modules' .
+                                          '(module_id, icon, title, synopsis, '.
+                                           'in_preview, est_time, points, ' .
+                                           'last_update) ' .
+                                          'VALUES(?, ?, ?, ?, ?, ?, ?, NOW())');
+            $insStmt->execute([ $this->id, $this->icon, $this->title,
+                                $this->synopsis, $preview, $this->time,
+                                $this->points ]);
+        }
+
+        echo 'Published [' . $this->id . '] ' . $this->title . "\n";
+
+        /* Need the module to publish the units, also track deactivations */
+        $cnt = 0;
+        foreach ($this->units as $unit) {
+            $unit->publish(++$cnt);
+        }
+    }
+
+    /* General rendering function, transforms indexing for sidebar */
+    public function renderContent() {
+        Global $UserId;
+        $schema = \Database::schema();
+
+        /* Build unit list and collect progress information */
+        $unitList = '';
+        $timeLeft = $totalTime = 0;
+        $pointsEarned = 0;
+        $qryStmt = \Database::prepare('SELECT un.unit_id, un.title, ' .
+                                             'un.synopsis, un.est_time, ' .
+                                             'un.points, ast.points, ' .
+                                             'ast.completed ' .
+                                      'FROM ' . $schema . 'units AS un ' .
+                                      'LEFT JOIN ' . $schema.
+                                                         'assessments AS ast ' .
+                                          'ON un.module_id=ast.module_id AND ' .
+                                             'un.unit_id=ast.unit_id AND ' .
+                                             'ast.user_id=? ' .
+                                      'WHERE un.module_id=? ' .
+                                      'ORDER BY un.ordr');
+        $qryStmt->execute([ $UserId, $this->id ]);
+        foreach($qryStmt->fetchAll() as $unit) {
+            $unitHRef = '/unit/' . $this->id . '/' . $unit[0];
+            $unitList = $unitList .
+                '<div class="module-unit-row">' .
+                  '<div class="module-unit-row-left">' .
+                    '<a href="' . $unitHRef . '">' . $unit[1] . '</a>' . "\n" .
+                    '<div class="module-unit-row-synopsis">' .
+                       $unit[2] . '</div>' . "\n";
+  
+            $totalTime += $unit[3];
+            if ($unit[6] != null) {
+                $pointsEarned += $unit[5];
+                $unitList = $unitList .
+                            '<div class="module-unit-row-statistics">' .
+                              'Completed ' .
+                              Utility::FormatDate($unit[6]) .
+                              ', ' . $unit[5] . ' points earned' .
+                            '</div></div>' .
+                            '<a class="module-unit-row-complete" ' .
+                               'href="' . $unitHRef . '"></a>';
+            } else {
+                $timeLeft += $unit[3];
+                $unitList = $unitList .
+                            '<div class="module-unit-row-statistics">' .
+                              Utility::FormatInterval($unit[3]) .
+                              ', ' . $unit[4] . ' points' .
+                            '</div></div>' . 
+                            '<a class="module-unit-row-incomplete" ' .
+                               'href="' . $unitHRef . '"></a>';
+            }
+
+            $unitList = $unitList . '</div>' . "\n";
+        }
+
+        /* Format progress or completion information */
+        if ($this->completed != null) {
+            $progress = 'Completed ' . Utility::FormatDate($this->completed);
+            $progbar = '';
+        } else {
+            $progress = Utility::FormatInterval($timeLeft) . ' remaining';
+
+            $pct = intval(($totalTime - $timeLeft) * 100 / $totalTime);
+            $progbar = Utility::FormatProgressBar($pct);
+        }
+        if ($pointsEarned != 0) {
+            $progress = $progress . ', ' . $pointsEarned . ' points earned';
+        }
+
+        return '<div class="module-wrapper">' . "\n" .
+                 '<div class="module-header">' . "\n" .
+                   '<div class="module-header-badge' .
+                        (($this->completed == null) ? '' :
+                                ' module-header-badge-complete') . '">' . "\n" .
+                     '<img src="/badges/' . $this->id . '.png" '.
+                          'alt="module badge"/>' . "\n" .
+                   '</div>' . "\n" .
+                   '<div class="module-header-info">' .
+                     '<div class="module-header-row">' .
+                       '<div class="module-header-title">' .
+                         $this->title . '</div>' . "\n" .
+                       '<div class="module-header-points">' .
+                         $this->points . ' points</div>' . "\n" .
+                     '</div>' . "\n" .
+                     '<div class="module-header-synopsis">' .
+                       $this->synopsis . '</div>' . "\n" .
+                     '<div class="module-header-row">' .
+                       '<div class="module-header-progress">' .
+                         $progress .
+                       '</div>' .  $progbar .
+                     '</div>' . "\n" .
+                   '</div>' . "\n" .
+                 '</div>' . "\n" .
+                 '<div class="module-unit-list">' . "\n" .
+                     $unitList .
+                 '</div></div>';
+    }
+}
+
+?>

@@ -1,0 +1,116 @@
+<?php
+/*
+ * Model for path parsing, publishing, retrieval and rendering.
+ *
+ * Copyright (C) 2020-2021 J.M. Heisz.  All Rights Reserved.
+ * See the LICENSE file accompanying the distribution your rights to use
+ * this software.
+ */
+
+namespace Pathways;
+
+require_once('module.lib');
+
+/**
+ * Container and functional entry point for procesing module data.
+ */
+class Path {
+    public $id, $icon, $title, $synopsis, $inPreview, $time, $points;
+    public $modules, $references;
+
+    /**
+     * Main constructor either consumes an XML document node for definition or
+     * a path identifier to load from the database.
+     *
+     * @param src Either the XML source or the identifier of the path to load.
+     */
+    public function __construct($src = null) {
+        if ($src instanceof \SimpleXMLElement) {
+            $this->_xmlConstruct($src);
+        } else if (isset($src)) {
+            $this->_pdoConstruct($src);
+        }
+        /* Fallthrough is a null constructor for static population */
+    }
+
+    /* Internal method to load the path instance from the database by id */
+    private function _pdoConstruct($id) {
+    }
+
+    /* Internal method to construct the path instance from an XML node */
+    private function _xmlConstruct($node) {
+        /* Grab required elements */
+        if ((null == ($this->id = $node['id'])) ||
+              (null == ($this->icon = $node['icon'])) ||
+              (null == ($this->title = $node['title'])) ||
+              (null == ($this->synopsis = $node['synopsis']))) {
+            throw new \ErrorException(
+                           'Missing required XML attributes for <Path>');
+        }
+
+        /* And optional ones */
+        $this->inPreview = $node['preview'];
+        if (($this->inPreview == null) || ($this->inPreview != 'no')) {
+            $this->inPreview = true;
+        } else {
+            $this->inPreview = false;
+        }
+
+        /* Paths can contain module references or full definitions */
+        $this->modules = [];
+        foreach($node->children() as $child) {
+            if ($child->getName() == 'Module') {
+                $mod = new Module($child);
+                $mod->inPreview = $this->inPreview;
+                array_push($this->modules, $mod);
+            } else if ($child->getName() == 'ModuleReference') {
+            } else {
+                throw new \ErrorException( 
+                           'Invalid child, <Path> can only contain <Module>' .
+                           'or <ModuleReference>');
+            }
+        }
+    }
+
+    /**
+     * Publish the underlying path content to the data and image stores.
+     */
+    public function publish() {
+        $schema = \Database::schema();
+
+        /* First, publish the child module instances */
+        foreach ($this->modules as $mod) {
+            $mod->publish();
+        }
+
+        /* Simulated upsert, presuming external transaction management */
+        $qryStmt = \Database::prepare('SELECT path_id ' .
+                                      'FROM ' . $schema . 'paths ' .
+                                      'WHERE path_id=? FOR UPDATE');
+        $qryStmt->execute([ $this->id ]);
+        $preview = ($this->inPreview) ? 't' : 'f';
+        if (count($qryStmt->fetchAll()) != 0) {
+            $updStmt = \Database::prepare('UPDATE ' . $schema . 'paths ' .
+                                          'SET icon=?, title=?, synopsis=?, ' .
+                                              'in_preview=? ' .
+                                          'WHERE path_id=?');
+            $updStmt->execute([ $this->icon, $this->title, $this->synopsis,
+                                $preview, $this->id ]);
+            if ($updStmt->rowCount() != 1) {
+                throw new \ErrorException(
+                               'Failed to update path, target not found?');
+            }
+        } else {
+            $insStmt = \Database::prepare('INSERT INTO ' . $schema . 'paths' .
+                                          '(path_id, icon, title, synopsis, ' .
+                                           'in_preview) ' .
+                                          'VALUES(?, ?, ?, ?, ?)');
+            $insStmt->execute([ $this->id, $this->icon, $this->title,
+                                $this->synopsis, $preview ]);
+        }
+
+        echo 'Published [' . $this->id . '] ' . $this->title . "\n";
+    }
+}
+
+?>

@@ -1,0 +1,15 @@
+<?php
+/*
+ * Integration point for hands-on/lab activity verification.
+ *
+ * Copyright (C) 2020-2021 J.M. Heisz.  All Rights Reserved.
+ * See the LICENSE file accompanying the distribution your rights to use
+ * this software.
+ */
+
+namespace Pathways;
+
+/* Based on the <module>:<unit> key, return null for success or error message */
+function LabVerify($modUnitKey) {
+    return null;
+}

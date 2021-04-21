@@ -1,0 +1,669 @@
+<?php
+/*
+ * Model for unit parsing, publishing, retrieval and rendering.
+ *
+ * Copyright (C) 2020-2021 J.M. Heisz.  All Rights Reserved.
+ * See the LICENSE file accompanying the distribution your rights to use
+ * this software.
+ */
+
+namespace Pathways;
+
+require_once('labs.lib');
+
+/**
+ * Containers for quiz-based questions and answers.
+ */
+class Answer {
+    public $id, $text, $isCorrect;
+
+    /**
+     * Main constructor either consumes an XML document node for definition or
+     * a database record for retrieval.
+     */
+    public function __construct($src = null) {
+        $this->moduleId = $moduleId;
+
+        if ($src instanceof \SimpleXMLElement) {
+            $this->_xmlConstruct($src);
+        } else if (isset($src)) {
+            $this->_recConstruct($src);
+        }
+        /* Fallthrough is a null constructor for static population */
+    }
+
+    /* Internal method to construct from an XML node */
+    private function _xmlConstruct($node) {
+        /* Filter the global answer attributes first */
+        $this->text = trim((string) $node);
+        $flag = $node['correct'];
+        $this->isCorrect = (($flag == 'true') || ($flag == 'yes'));
+    }
+
+    /**
+     * For question/answer, publication is insert only (update replace).
+     */
+    public function publish($moduleId, $unitId, $questionId) {
+        $schema = \Database::schema();
+
+        $insStmt = \Database::prepare('INSERT INTO ' . $schema . 'answers' .
+                                      '(module_id, unit_id, question_id, ' .
+                                       'answer_id, content, is_correct) ' .
+                                      'VALUES(?, ?, ?, ?, ?, ?)');
+        $insStmt->execute([ $moduleId, $unitId, $questionId,
+                            $this->id, $this->text,
+                            ($this->isCorrect ? 'true' : 'false') ]);
+    }
+}
+
+class Question {
+    public $id, $text, $answers;
+
+    /**
+     * Main constructor either consumes an XML document node for definition or
+     * a database record for retrieval.
+     */
+    public function __construct($src = null) {
+        $this->moduleId = $moduleId;
+
+        if ($src instanceof \SimpleXMLElement) {
+            $this->_xmlConstruct($src);
+        } else if (isset($src)) {
+            $this->_recConstruct($src);
+        }
+        /* Fallthrough is a null constructor for static population */
+    }
+
+    /* Internal method to construct from an XML node */
+    private function _xmlConstruct($node) {
+        /* Filter the global question attributes first */
+        $this->text = trim((string) $node);
+
+        /* Ideally, questions have answers... */
+        $this->answers = [];
+        foreach ($node->children() as $child) {
+            $nm = $child->getName();
+            if ($nm == 'Answer') {
+                $ans = new Answer($child);
+                array_push($this->answers, $ans);
+                $ans->id = 'a' . count($this->answers);
+            } else {
+                throw new \ErrorException( 
+                               '<Question>s can only contain <Answer>s');
+            }
+        }
+        if (count($this->answers) == 0) {
+            throw new \ErrorException('<Question>s need at least one <Answer>');
+        }
+    }
+
+    /**
+     * For question/answer, publication is insert only (update replace).
+     */
+    public function publish($moduleId, $unitId) {
+        $schema = \Database::schema();
+
+        $insStmt = \Database::prepare('INSERT INTO ' . $schema . 'questions' .
+                                      '(module_id, unit_id, question_id, ' .
+                                       'content) ' .
+                                      'VALUES(?, ?, ?, ?)');
+        $insStmt->execute([ $moduleId, $unitId, $this->id, $this->text ]);
+
+        foreach ($this->answers as $ans) {
+            $ans->publish($moduleId, $unitId, $this->id);
+        }
+    }
+}
+
+/**
+ * Container and functional entry point for procesing unit data.
+ */
+class Unit {
+    public $moduleId, $id, $title, $synopsis, $time, $content, $points;
+    public $assessType, $questions, $moduleTitle, $inPreview;
+    public $setup, $activity;
+
+    /**
+     * Main constructor either consumes an XML document node for definition or
+     * a unit identifier to load from the database, along with the parent 
+     * module identifier.
+     */
+    public function __construct($src = null, $moduleId = null) {
+        $this->moduleId = $moduleId;
+
+        if ($src instanceof \SimpleXMLElement) {
+            $this->_xmlConstruct($src);
+        } else if (isset($src)) {
+            $this->_pdoConstruct($src, $moduleId);
+        }
+        /* Fallthrough is a null constructor for static population */
+    }
+
+    /* Internal method to load the unit instance from the database by id */
+    private function _pdoConstruct($id, $moduleId) {
+        $schema = \Database::schema();
+
+        /* Query the core unit data, validating existence */
+        $qryStmt = \Database::prepare('SELECT unit_id, title, synopsis, ' .
+                                             'est_time, points, content, ' .
+                                             'setup, activity ' .
+                                      'FROM ' . $schema . 'units ' .
+                                      'WHERE module_id=? AND unit_id=?');
+        $qryStmt->execute([ $moduleId, $id ]);
+        $res = $qryStmt->fetchAll();
+        if (count($res) != 1) return;
+        $this->id = $id;
+        $this->moduleId = $moduleId;
+        $this->title = $res[0][1];
+        $this->synopsis = $res[0][2];
+        $this->time = $res[0][3];
+        $this->points = $res[0][4];
+        $this->content = $res[0][5];
+        $this->setup = $res[0][6];
+        $this->activity = $res[0][7];
+
+        /* Load related module information (pending render) */
+        $qryStmt = \Database::prepare('SELECT title, in_preview ' .
+                                      'FROM ' . $schema . 'modules ' .
+                                      'WHERE module_id=?');
+        $qryStmt->execute([ $moduleId ]);
+        $res = $qryStmt->fetchAll();
+        $this->moduleTitle = $res[0][0];
+        $this->inPreview = $res[0][1];
+    }
+
+    /* Internal method to construct the unit instance from an XML node */
+    private function _xmlConstruct($node) {
+        /* Filter the global unit attributes first */
+        if ((null == ($this->id = $node['id'])) ||
+              (null == ($this->title = $node['title'])) ||
+              (null == ($this->synopsis = $node['synopsis'])) ||
+              (null == ($this->time = $node['time']))) {
+            throw new \ErrorException(
+                           'Missing required XML attributes for <Unit>');
+        }
+        if (!ctype_digit(strval($this->time))) {
+            throw new \ErrorException(
+                    'Invalid <Assessment> time value (non-integer)');
+        }
+        $this->time = intval($this->time);
+
+        /* Parse child content and assessment elements */
+        $this->content = null;
+        foreach ($node->children() as $child) {
+            $nm = $child->getName();
+            if ($nm == 'Content') {
+                if ($this->content == null) {
+                    $this->content = (string) $child;
+                } else {
+                    throw new \ErrorException( 
+                               'Multiple <Content> elements within <Unit>');
+                }
+            } else if ($nm == 'Assessment') {
+                if ((null == ($this->assessType = $child['type'])) ||
+                      (null == ($this->points = $child['points']))) {
+                    throw new \ErrorException(
+                              'Missing type/points for <Unit><Assessment>');
+                }
+                if (($this->assessType != 'quiz') &&
+                        ($this->assessType != 'lab')) {
+                    throw new \ErrorException(
+                            'Invalid <Assessment> type: ' . $this->assessType);
+                }
+                if (!ctype_digit(strval($this->points))) {
+                    throw new \ErrorException(
+                            'Invalid <Assessment> points value (non-integer)');
+                }
+                $this->points = intval($this->points);
+
+                if ($this->assessType == 'quiz') {
+                    $this->questions = [];
+                    foreach ($child->children() as $chld) {
+                        if ($chld->getName() != 'Question') {
+                            throw new \ErrorException( 
+                                'Quiz assessments can only contain <Question>');
+                        }
+                        $quest = new Question($chld);
+                        array_push($this->questions, $quest);
+                        $quest->id = 'q' . count($this->questions);
+                    }
+                    if (count($this->questions) == 0) {
+                        throw new \ErrorException( 
+                            'Quiz assessments need at least one <Question>');
+                    }
+                } else {
+                    $this->setup = $this->activity = null;
+                    foreach ($child->children() as $chld) {
+                        if ($chld->getName() == 'Setup') {
+                            if ($this->setup == null) {
+                                $this->setup = (string) $chld;
+                            } else {
+                                throw new \ErrorException( 
+                                       'Multiple <Setup> in lab assessment');
+                            }
+                        } else if ($chld->getName() == 'Activity') {
+                            if ($this->activity == null) {
+                                $this->activity = (string) $chld;
+                            } else {
+                                throw new \ErrorException( 
+                                       'Multiple <Activity> in lab assessment');
+                            }
+                        } else {
+                            throw new \ErrorException( 
+                               'Lab assesments contain only <Setup|Activity>');
+                        }
+                    }
+                    if ($this->activity == null) {
+                        throw new \ErrorException( 
+                            'Lab assessments need an <Activity>');
+                    }
+                }
+            } else {
+                throw new \ErrorException(
+                               'Invalid <Unit> child element \'' . $nm . '\'');
+            }
+        }
+        if ($this->content == null) {
+            throw new \ErrorException( 
+                          '<Unit> missing <Content> child');
+        }
+    }
+
+    /**
+     * Publish the underlying unit content to the data and image stores.
+     */
+    public function publish($ord) {
+        $schema = \Database::schema();
+
+        /* Simulated upsert, presuming external transaction management */
+        $qryStmt = \Database::prepare('SELECT unit_id ' .
+                                      'FROM ' . $schema . 'units ' .
+                                      'WHERE module_id=? AND unit_id=? ' .
+                                      'FOR UPDATE');
+        $qryStmt->execute([ $this->moduleId, $this->id ]);
+        if (count($qryStmt->fetchAll()) != 0) {
+            $updStmt = \Database::prepare('UPDATE ' . $schema . 'units ' .
+                                          'SET ordr=?, title=?, synopsis=?, ' .
+                                              'est_time=?, content=?, ' .
+                                              'assess_type=?, points=?, ' .
+                                              'setup=?, activity=? ' .
+                                          'WHERE module_id=? AND unit_id=?');
+            $updStmt->execute([ $ord, $this->title, $this->synopsis,
+                                $this->time, $this->content, $this->assessType,
+                                $this->points, $this->setup, $this->activity,
+                                $this->moduleId, $this->id ]);
+            if ($updStmt->rowCount() != 1) {
+                throw new \ErrorException( 
+                               'Failed to update path, target not found?');
+            }
+
+            /* Delete all associated questions (full replacement) */
+            $delStmt = \Database::prepare('DELETE FROM ' .
+                                                $schema . 'questions ' .
+                                          'WHERE module_id=? AND unit_id=?');
+            $delStmt->execute([ $this->moduleId, $this->id ]);
+        } else {
+            $insStmt = \Database::prepare('INSERT INTO ' . $schema . 'units' .
+                                          '(module_id, unit_id, ordr, title, ' .
+                                           'synopsis, est_time, content, ' .
+                                           'assess_type, points, setup, ' .
+                                           'activity) ' .
+                                          'VALUES(?, ?, ?, ?, ?, ?, ?, ?, ' .
+                                                 '?, ?, ?)');
+            $insStmt->execute([ $this->moduleId, $this->id, $ord, $this->title,
+                                $this->synopsis, $this->time, $this->content,
+                                $this->assessType, $this->points, $this->setup,
+                                $this->activity ]);
+        }
+
+        if ($this->assessType == 'quiz') {
+            foreach ($this->questions as $quest) {
+                $quest->publish($this->moduleId, $this->id);
+            }
+        }
+
+        echo 'Published [' . $this->moduleId . ':' . $this->id . '] ' .
+             $this->title . "\n";
+    }
+
+    /* General rendering function, transforms indexing for sidebar */
+    public function renderContent() {
+        /* Parse out headings, this assumes some very specific tagging */
+        $tagIdx = 0;
+        $parts = explode('<h2>', $this->content);
+        $content = array_shift($parts);
+        $headings = [];
+        while (count($parts) != 0) {
+            $content .= '<h2><a id="unit-section-' . ++$tagIdx . '" ' .
+                               'class="unit-anchor"></a>' .
+                        array_shift($parts);
+        }
+
+        return '<div class="unit-wrapper">' . "\n" .
+                 '<div class="unit-content" id="unit-content">' . "\n" .
+                   '<h1>' . $this->title . '</h1>' . "\n" .
+                   $content .
+                   '<div id="unit-assessment"></div>' . "\n" .
+                 '</div>' .
+                 '<div class="unit-sidebar">' . "\n" .
+                   '<div class="sidebar-wrapper">' . "\n" .
+                     '<div class="sidebar-header">Current Module' .
+                           ((!$this->inPreview) ? '' :
+                              '<span style="color: #d22922"> (Preview)</span>') .
+                           '</div>' . "\n" .
+                     '<div><a href="/module/' . $this->moduleId . '">' .
+                                     $this->moduleTitle . '</a></div>' . "\n" .
+                     '<div class="sidebar-header">Time Estimate</div>' . "\n" .
+                     '<div>' . Utility::FormatInterval($this->time) .
+                                                            '</div>' . "\n" .
+                     '<div class="unit-sidebar-sections-wrapper">' . "\n" .
+                       '<div class="sidebar-header">Sections</div>' . "\n" .
+                       '<div id="unit-sidebar-sections"></div>' . "\n" .
+                     '</div>' . "\n" .
+                   '</div>' . "\n" .
+                 '</div>' . "\n" .
+               '</div>';
+    }
+
+    /* Common points calculation function, adjust to your liking */
+    public static function getPoints($type, $srcPoints, $failures) {
+        if ($type == 'lab') return $srcPoints;
+        if ($failures < 0) $failures = 0;
+        if ($failures > 2) $failures = 2;
+        if ($type == 'quiz') return $srcPoints / (2 ** $failures);
+        return $srcPoints;
+    }
+
+    /* Static accessor to obtain current assessment state for unit */
+    public static function getAssessmentInfo($moduleId, $unitId) {
+        global $UserId;
+        $schema = \Database::schema();
+
+        /* First verify/collect unit information */
+        $qryStmt = \Database::prepare('SELECT assess_type, points, setup, ' .
+                                             'activity ' .
+                                      'FROM ' . $schema . 'units ' .
+                                      'WHERE module_id=? AND unit_id=?');
+        $qryStmt->execute([ $moduleId, $unitId ]);
+        $unitInfo = $qryStmt->fetchAll();
+        if (count($unitInfo) == 0) return null;
+        $res = array('complete' => false,
+                     'points' => $unitInfo[0][1]);
+        $type = $res['assessType'] = $unitInfo[0][0];
+
+        /* Check for existing user failures */
+        $qryStmt = \Database::prepare('SELECT failures, points, completed ' .
+                                      'FROM ' . $schema . 'assessments ' .
+                                      'WHERE user_id=? AND module_id=? AND ' .
+                                            'unit_id=?');
+        $qryStmt->execute([ $UserId, $moduleId, $unitId ]);
+        $userInfo = $qryStmt->fetchAll();
+        if (count($userInfo) != 0) {
+            if ($userInfo[0][1] != 0) {
+                /* Assessment is completed, just return now */
+                $res['complete'] = true;
+                $res['completed'] = Utility::FormatDate($userInfo[0][2]);
+                $res['points'] = $userInfo[0][1];
+                $res['moduleProgress'] = Unit::getModuleProgress($moduleId);
+                return $res;
+            }
+
+            $res['points'] = Unit::getPoints($unitInfo[0][0], $unitInfo[0][1],
+                                             $userInfo[0][0]);
+        }
+
+        /* Hands-on just needs description */
+        if ($type == 'lab') {
+            $res['setup'] = $unitInfo[0][2];
+            $res['activity'] = $unitInfo[0][3];
+            return $res;
+        }
+
+        /* Otherwise, we need a question/answer set */
+        $questions = [];
+        $res['questions'] = [];
+        $qryStmt = \Database::prepare('SELECT question_id, content ' .
+                                      'FROM ' . $schema . 'questions ' .
+                                      'WHERE module_id=? AND unit_id=?');
+        $qryStmt->execute([ $moduleId, $unitId ]);
+        foreach ($qryStmt->fetchAll() as $row) {
+            $quest = array('id' => $row[0],
+                           'text' => $row[1],
+                           'count' => 0,
+                           'answers' => []);
+            $questions[$row[0]] = $quest;
+            $res['questions'][] = &$questions[$row[0]];
+        }
+
+        $qryStmt = \Database::prepare('SELECT question_id, answer_id, ' .
+                                             'content, is_correct ' .
+                                      'FROM ' . $schema . 'answers ' .
+                                      'WHERE module_id=? AND unit_id=?');
+        $qryStmt->execute([ $moduleId, $unitId ]);
+        foreach ($qryStmt->fetchAll() as $row) {
+            array_push($questions[$row[0]]['answers'],
+                       array('id' => $row[1],
+                             'text' => $row[2]));
+            if ($row[3]) $questions[$row[0]]['count']++;
+        }
+
+        return $res;
+    }
+
+    /* Do the assessment */
+    public static function assess($moduleId, $unitId, $info) {
+        global $UserId;
+        $schema = \Database::schema();
+
+        /* First verify/collect unit information */
+        $qryStmt = \Database::prepare('SELECT assess_type, points ' .
+                                      'FROM ' . $schema . 'units ' .
+                                      'WHERE module_id=? AND unit_id=?');
+        $qryStmt->execute([ $moduleId, $unitId ]);
+        $unitInfo = $qryStmt->fetchAll();
+        if (count($unitInfo) == 0) return null;
+
+        /* Check for preview conditions */
+        $qryStmt = \Database::prepare('SELECT in_preview ' .
+                                      'FROM ' . $schema . 'modules ' .
+                                      'WHERE module_id=?');
+        $qryStmt->execute([ $moduleId ]);
+        $inPreview = $qryStmt->fetchAll()[0][0];
+
+        /* Check for existing user failures */
+        $failures = 0;
+        $qryStmt = \Database::prepare('SELECT failures ' .
+                                      'FROM ' . $schema . 'assessments ' .
+                                      'WHERE user_id=? AND module_id=? AND ' .
+                                            'unit_id=?');
+        $qryStmt->execute([ $UserId, $moduleId, $unitId ]);
+        $userInfo = $qryStmt->fetchAll();
+        if (count($userInfo) != 0) $failures = $userInfo[0][0];
+
+        /* Split verification for the two evaluation types */
+        $errorCount = 0;
+        $errorMsg = null;
+        if ($unitInfo[0][0] == 'lab') {
+            $errorMsg = LabVerify($moduleId . ':' . $unitId);
+        } else {
+            /* Query the answer keys, filtering correct responses */
+            $qryStmt = \Database::prepare('SELECT question_id, answer_id ' .
+                                          'FROM ' . $schema . 'answers ' .
+                                          'WHERE module_id=? AND unit_id=? ' .
+                                            'AND is_correct=\'y\'');
+            $qryStmt->execute([ $moduleId, $unitId ]);
+            foreach ($qryStmt->fetchAll() as $row) {
+                if (!array_key_exists($row[0], $info)) continue;
+                $key = array_search($row[1], $info[$row[0]]);
+                if ($key !== false) {
+                    unset($info[$row[0]][$key]);
+                    $info[$row[0]] = array_values($info[$row[0]]);
+                }
+            }
+
+            /* If there are any leftovers, oops */
+            foreach ($info as $entry) {
+                if (count($entry) != 0) $errorCount++;
+            }
+        }
+
+        /* Record attempts (failures) in either case */
+        if (($errorCount != 0) || ($errorMsg != null)) {
+            if ($failures == 0) {
+                $insStmt = \Database::prepare(
+                                  'INSERT INTO ' . $schema . 'assessments' .
+                                  '(user_id, module_id, unit_id, ' .
+                                   'failures, points) '  .
+                                  'VALUES(?, ?, ?, ?, 0)');
+                $insStmt->execute([ $UserId, $moduleId, $unitId, 1 ]);
+
+                $failures = 1;
+            } else {
+                $updStmt = \Database::prepare(
+                                  'UPDATE ' . $schema . 'assessments ' .
+                                  'SET failures=failures+1 ' .
+                                  'WHERE user_id=? AND module_id=? AND ' .
+                                        'unit_id=?');
+                $updStmt->execute([ $UserId, $moduleId, $unitId ]);
+                $failures++;
+
+                /* Watch for cheaters */
+                $qryStmt = \Database::prepare(
+                                  'SELECT failures ' .
+                                  'FROM ' . $schema . 'assessments ' .
+                                  'WHERE user_id=? AND module_id=? AND ' .
+                                        'unit_id=?');
+                $qryStmt->execute([ $UserId, $moduleId, $unitId ]);
+                $userInfo = $qryStmt->fetchAll();
+                if (count($userInfo) != 0) $failures = $userInfo[0][0];
+            }
+
+            return array('status' => 'error',
+                         'points' => Unit::getPoints($unitInfo[0][0],
+                                                     $unitInfo[0][1],
+                                                     $failures),
+                         'errors' => $errorCount,
+                         'errorMsg' => $errorMsg,
+                         'incorrect' => $info);
+        }
+
+        /* If we get to here, assessment has been completed! Woohoo! */
+        $points = Unit::getPoints($unitInfo[0][0], $unitInfo[0][1],
+                                  $failures);
+        if ($failures == 0) {
+            $insStmt = \Database::prepare('INSERT INTO ' .
+                                                   $schema . 'assessments' .
+                                          '(user_id, module_id, unit_id, ' .
+                                           'failures, points, completed) '  .
+                                          'VALUES(?, ?, ?, 0, ?, NOW())');
+            $insStmt->execute([ $UserId, $moduleId, $unitId, $points ]);
+        } else {
+            $updStmt = \Database::prepare('UPDATE ' . $schema . 'assessments ' .
+                                          'SET points=?, completed=NOW() ' .
+                                          'WHERE user_id=? AND module_id=? ' .
+                                                'AND unit_id=?');
+            $updStmt->execute([ $points, $UserId, $moduleId, $unitId ]);
+        }
+
+        /* Determine completion state of the module */
+        $moduleProgress = Unit::getModuleProgress($moduleId);
+
+        /* Mark completion of the badge */
+        if ($moduleProgress['progBar'] == 100) {
+            $insStmt = \Database::prepare('INSERT INTO ' . $schema . 'badges' .
+                                          '(user_id, module_id, points, ' .
+                                           'completed) ' .
+                                          'VALUES(?, ?, ?, NOW())');
+            $insStmt->execute([ $UserId, $moduleId,
+                                $moduleProgress['pointsEarned'] ]);
+
+            $updStmt = \Database::prepare('UPDATE ' . $schema . 'users ' .
+                                          'SET badge_count=badge_count+1, ' .
+                                              'total_points=total_points+? ' .
+                                          'WHERE user_id=?');
+            $updStmt->execute([ $moduleProgress['pointsEarned'], $UserId ]);
+        }
+
+        return array('status'=> 'correct',
+                     'points' => $points,
+                     'moduleProgress' => $moduleProgress);
+    }
+
+    /* Common method to determine module completion status */
+    private static function getModuleProgress($moduleId) {
+        global $UserId;
+        $schema = \Database::schema();
+
+        /* Pull module information including completion details */
+        $qryStmt = \Database::prepare('SELECT md.module_id, md.title, ' .
+                                             'bdg.points, bdg.completed ' .
+                                      'FROM ' . $schema . 'modules AS md ' .
+                                      'LEFT JOIN ' . $schema. 'badges AS bdg ' .
+                                          'ON md.module_id=bdg.module_id AND ' .
+                                             'bdg.user_id=? ' .
+                                      'WHERE md.module_id=?');
+        $qryStmt->execute([ $UserId, $moduleId ]);
+        $modInfo = $qryStmt->fetchAll();
+
+        /* Easy exit if badge is completed */
+        if ($modInfo[0][3] != null) {
+            return array('moduleBadge' => '/badges/' . $moduleId . '.png',
+                         'moduleName' => $modInfo[0][1],
+                         'pointsEarned' => $modInfo[0][2],
+                         'progress' => 'Completed ' .
+                                       Utility::FormatDate($modInfo[0][3]) .
+                                       ', ' . $modInfo[0][2] . ' points earned',
+                         'progBar' => 100,
+                         'nextUnitHRef' => null,
+                         'nextUnitName' => null);
+        }
+
+        /* Collect underlying unit information for progression */
+        $qryStmt = \Database::prepare('SELECT un.unit_id, un.title, ' .
+                                             'un.est_time, ast.points, ' .
+                                             'ast.completed ' .
+                                      'FROM ' . $schema . 'units AS un ' .
+                                      'LEFT JOIN ' . $schema.
+                                                         'assessments AS ast ' .
+                                          'ON un.module_id=ast.module_id AND ' .
+                                             'un.unit_id=ast.unit_id AND ' .
+                                             'ast.user_id=? ' .
+                                      'WHERE un.module_id=? ' .
+                                      'ORDER BY un.ordr');
+        $qryStmt->execute([ $UserId, $moduleId ]);
+        $timeLeft = $totalTime = 0;
+        $pointsEarned = 0;
+        $nextUnitRef = null;
+        foreach($qryStmt->fetchAll() as $unit) {
+            $totalTime += $unit[2];
+            if ($unit[4] != null) {
+                $pointsEarned += $unit[3];
+            } else {
+                $timeLeft += $unit[2];
+                if ($nextUnitRef == null) {
+                    $nextUnitRef = '/unit/' . $moduleId . '/' . $unit[0];
+                    $nextUnitName = $unit[1];
+                }
+            }
+        }
+        $pct = intval(($totalTime - $timeLeft) * 100 / $totalTime);
+
+        /* Need a tada! moment! */
+        if ($pct == 100) {
+            $progress = 'Just completed! ' . 
+                        $pointsEarned . ' points earned';
+        } else {
+            $progress = Utility::FormatInterval($timeLeft) . ' remaining ';
+        }
+
+        return array('moduleBadge' => '/badges/' . $modInfo[0][0] . '.png',
+                     'moduleName' => $modInfo[0][1],
+                     'pointsEarned' => $pointsEarned,
+                     'progress' => $progress,
+                     'progBar' => $pct,
+                     'nextUnitHRef' => $nextUnitRef,
+                     'nextUnitName' => $nextUnitName);
+    }
+}
+
+?>
