@@ -1,8 +1,10 @@
 {
     "name": "pathways",
-    "description": "React web components for the pathways learning application.",
+    "description": "React components for the pathways learning application.",
     "author": "J.M. Heisz",
     "version": "0.1.0",
+    "repository": "https://github.com/heisz/pathways",
+    "license": "MIT",
     "engines": {
         "node": ">= 1.14"
     },

@@ -74,10 +74,8 @@ try {
         exit();
     } else {
         error_log('Database conenction error: ' . $ex->getMessage());
-        $PageTitle = 'Internal System Error';
-        include_once('src/inc/header.inc');
-        echo 'POOOP ' . $ex->getMessage();
-        include_once('src/inc/footer.inc');
+        /* Hand off response error to upstream wrapper */
+        http_response_code(503 /* Service unavailable */);
         exit();
     }
 }
@@ -89,8 +87,8 @@ $UserId = 'test';
 require_once('src/lib/user.lib');
 $User = new Pathways\User($UserId);
 if (($User == null) || ($User->id == null)) {
-    /* TODO - some fancy Rexy 405 errors */
-    echo 'BAD';
+    /* Hand off response error to upstream wrapper */
+    http_response_code(401 /* Unauthorized (unknown) */);
     exit();
 }
 

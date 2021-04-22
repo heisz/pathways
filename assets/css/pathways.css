@@ -116,22 +116,19 @@ footer {
     position: relative;
 }
 
-.module-header-badge-complete::after {
-    font-size: 1.1rem;
-    font-weight: 700;
+.module-header-badge svg {
     position: absolute;
     top: -0.2rem;
     right: -0.2rem;
-    width: 1.6rem;
-    height: 1.6rem;
+    width: 1.0rem;
+    height: 1.0rem;
+    padding: 0.25rem;
     border-radius: 15rem;
-    color: #ffffff;
+    fill: #ffffff;
     background-color: #049454;
     border: 2px solid #ffffff;
     display: inline-block;
     flex-shrink: 0;
-    text-align: center;
-    content: '\2713';
 }
 
 .module-header-info {
@@ -200,36 +197,31 @@ footer {
     font-size: 0.9rem;
 }
 
-.module-unit-row-complete::after {
-    width: 2.5rem;
-    height: 2.5rem;
+.module-unit-row-complete {
+    width: 1.5rem;
+    height: 1.5rem;
     display: inline-block;
     font-weight: 500;
-    font-size: 2rem;
     flex-shrink: 0;
-    text-align: center;
-    line-height: 2.5rem;
+    padding: 0.5rem;
 
-    color: #ffffff;
+    fill: #ffffff;
     background-color: #049454;
     border-radius: 15rem;
-    content: '\2713';
 }
 
-.module-unit-row-incomplete::after {
-    width: 2.5rem;
-    height: 2.5rem;
+.module-unit-row-incomplete {
+    width: 1.5rem;
+    height: 1.5rem;
     display: inline-block;
     font-weight: 500;
     font-size: 2rem;
     flex-shrink: 0;
-    text-align: center;
-    line-height: 2.5rem;
+    padding: 0.5rem;
 
-    color: #808080;
+    fill: #808080;
     border: 1px solid #808080;
     border-radius: 15rem;
-    content: '\1f816';
 }
 
 /* ------------------------------------- */
@@ -458,6 +450,8 @@ footer {
 .assessment-quiz-answer-correct,
 .assessment-quiz-answer-error,
 .assessment-quiz-answer-disabled {
+    display: flex;
+    align-items: center;
     padding: 0.5rem 1.5rem;
     color: #595959;
     width: 100%;
@@ -481,6 +475,10 @@ footer {
     font-weight: 700;
     border: 1px solid #d6d6d6;
     padding: 0.25rem;
+}
+
+.assessment-answer-icon svg {
+    fill: #ffffff;
 }
 
 .assessment-answer-radio-icon {

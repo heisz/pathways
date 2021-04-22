@@ -20,17 +20,15 @@ if (preg_match('/\/unit\/(.*)\/(.*)$/', $uri, $matches)) {
     $unit = new Pathways\Unit($matches[2], $matches[1]);
 }
 if (($unit == null) || ($unit->id == null)) {
-    /* TODO - some fancy Rexy 404 errors */
-    echo 'BAD';
+    /* Hand off response error to upstream wrapper */
+    http_response_code(404 /* Not found */);
     exit();
 }
 $unitURI = $matches[1] . '/' . $matches[2];
 
 include_once('src/inc/header.inc');
-
+echo $unit->renderContent();
 ?>
-
-<?php echo $unit->renderContent(); ?>
 
 <script type="text/javascript">
     Pathways.ReactDOM.render(

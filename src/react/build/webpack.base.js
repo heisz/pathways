@@ -14,7 +14,7 @@ module.exports = {
     entry: './index.jsx',
 
     module: {
-        /* Note: tsx rules are in target instances to support differing config */
+        /* Note: tsx rules are in targets to support differing config */
         rules: [
         ]
    },

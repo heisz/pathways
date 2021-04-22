@@ -20,15 +20,14 @@ if (preg_match('/\/module\/(.*)$/', $uri, $matches)) {
     $module = new Pathways\Module($matches[1]);
 }
 if (($module == null) || ($module->id == null)) {
-    /* TODO - some fancy Rexy 404 errors */
-    echo 'BAD';
+    /* Hand off response error to upstream wrapper */
+    http_response_code(404 /* Not found */);
     exit();
 }
 
+/* Module content is pretty tidy */
 include_once('src/inc/header.inc');
+echo $module->renderContent();
+include_once('src/inc/footer.inc');
 
 ?>
-
-<?php echo $module->renderContent(); ?>
-
-<?php include_once('src/inc/footer.inc'); ?>

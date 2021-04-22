@@ -181,7 +181,13 @@ class Module {
                               ', ' . $unit[5] . ' points earned' .
                             '</div></div>' .
                             '<a class="module-unit-row-complete" ' .
-                               'href="' . $unitHRef . '"></a>';
+                               'href="' . $unitHRef . '">' .
+                              '<svg xmlns="http://www.w3.org/2000/svg" ' .
+                                   'viewBox="0 0 24 24">' .
+                                '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 ' .
+                                         '21 7l-1.41-1.41L9 16.17z"/>' .
+                              '</svg>' .
+                            '</a>';
             } else {
                 $timeLeft += $unit[3];
                 $unitList = $unitList .
@@ -190,7 +196,14 @@ class Module {
                               ', ' . $unit[4] . ' points' .
                             '</div></div>' . 
                             '<a class="module-unit-row-incomplete" ' .
-                               'href="' . $unitHRef . '"></a>';
+                               'href="' . $unitHRef . '">' .
+                              '<svg xmlns="http://www.w3.org/2000/svg" ' .
+                                   'viewBox="0 0 24 24">' .
+                                '<path d="M12 4l-1.41 1.41L16.17 ' .
+                                         '11H4v2h12.17l-5.58 5.59L12 ' .
+                                         '20l8-8-8-8z"/>' .
+                              '</svg>' .
+                            '</a>';
             }
 
             $unitList = $unitList . '</div>' . "\n";
@@ -212,11 +225,15 @@ class Module {
 
         return '<div class="module-wrapper">' . "\n" .
                  '<div class="module-header">' . "\n" .
-                   '<div class="module-header-badge' .
-                        (($this->completed == null) ? '' :
-                                ' module-header-badge-complete') . '">' . "\n" .
+                   '<div class="module-header-badge">' . "\n" .
                      '<img src="/badges/' . $this->id . '.png" '.
                           'alt="module badge"/>' . "\n" .
+                     (($this->completed == null) ? '' :
+                       '<svg xmlns="http://www.w3.org/2000/svg" ' .
+                            'viewBox="0 0 24 24">' .
+                         '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 ' .
+                                  '21 7l-1.41-1.41L9 16.17z"/>' .
+                       '</svg>' . "\n") .
                    '</div>' . "\n" .
                    '<div class="module-header-info">' .
                      '<div class="module-header-row">' .

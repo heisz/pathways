@@ -239,7 +239,7 @@ class Assessor extends React.Component<AssessorProps, AssessmentState> {
     }
 
     /* Generate suitable icon text for answer based on state */
-    ansIcon(questId: string, ansId: string, idx: number): string {
+    ansIcon(questId: string, ansId: string, idx: number): any {
         const ansIcons: string[] = [ 'A', 'B', 'C', 'D', 'E', 'F' ];
 
         /* Normal letter if not answered condition */
@@ -247,8 +247,20 @@ class Assessor extends React.Component<AssessorProps, AssessmentState> {
                (!this.answerSet[questId].includes(ansId))) return ansIcons[idx];
         let correct = !this.errorSet[questId].includes(ansId);
 
-        /* Would be better to use SVG icons */
-        return (correct) ? '\u2713' : 'X';
+        /* Generate SVG icon instances */
+        if (correct) return (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21
+                     7l-1.41-1.41L9 16.17z"/>
+          </svg>
+        );
+
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59
+                     6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
+          </svg>
+        );
     }
 
     /* Standard React method to render state-driven component content */
