@@ -7,12 +7,13 @@
  * this software.
  */
 
-/* All inclusions are relative to source origin */
+/* All inclusions are relative to source origin, but need directory reference */
 $RootDir = dirname(__DIR__) . DIRECTORY_SEPARATOR;
+set_include_path(dirname(__DIR__));
 
 /* Start with the common initialization methods */
-include_once($RootDir . 'src/inc/init.inc');
-require($RootDir . 'src/lib/path.lib');
+include_once('src/inc/init.inc');
+require('src/lib/path.lib');
 
 /* Determine the assets directory and build publishing structures */
 function pathIsAbsolute($path) {
