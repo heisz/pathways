@@ -111,11 +111,12 @@ class Module {
         if (count($qryStmt->fetchAll()) != 0) {
             $updStmt = \Database::prepare('UPDATE ' . $schema . 'modules ' .
                                           'SET icon=?, title=?, synopsis=?, ' .
-                                              'in_preview=?, ' .
-                                              'last_update=NOW() ' .
+                                              'in_preview=?, est_time=?, ' .
+                                              'points=?, last_update=NOW() ' .
                                           'WHERE module_id=?');
             $updStmt->execute([ $this->icon, $this->title, $this->synopsis,
-                                $preview, $this->id ]);
+                                $preview, $this->time, $this->points,
+                                $this->id ]);
             if ($updStmt->rowCount() != 1) {
                 throw new \ErrorException(
                                'Failed to update path, target not found?');
