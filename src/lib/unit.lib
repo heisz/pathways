@@ -565,6 +565,12 @@ class Unit {
             $updStmt->execute([ $points, $UserId, $moduleId, $unitId ]);
         }
 
+        /* Dopamine hit here! */
+        $updStmt = \Database::prepare('UPDATE ' . $schema . 'users ' .
+                                      'SET total_points=total_points+? ' .
+                                      'WHERE user_id=?');
+        $updStmt->execute([ $points, $UserId ]);
+
         /* Determine completion state of the module */
         $moduleProgress = Unit::getModuleProgress($moduleId);
 
@@ -579,9 +585,8 @@ class Unit {
 
             $updStmt = \Database::prepare('UPDATE ' . $schema . 'users ' .
                                           'SET badge_count=badge_count+1, ' .
-                                              'total_points=total_points+? ' .
                                           'WHERE user_id=?');
-            $updStmt->execute([ $moduleProgress['pointsEarned'], $UserId ]);
+            $updStmt->execute([ $UserId ]);
         }
 
         return array('status'=> 'correct',
