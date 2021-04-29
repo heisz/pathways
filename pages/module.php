@@ -14,14 +14,23 @@ set_include_path(dirname(__DIR__));
 include_once('src/inc/init.inc');
 
 /* Extract module identifier, load and validate */
-require('src/lib/module.lib');
-$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-if (preg_match('/\/module\/(.*)$/', $uri, $matches)) {
-    $module = new Pathways\Module($matches[1]);
-}
-if (($module == null) || ($module->id == null)) {
+try {
+    require('src/lib/module.lib');
+    $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    if (preg_match('/\/module\/(.*)$/', $uri, $matches)) {
+        $module = new Pathways\Module($matches[1]);
+    }
+    if (($module == null) || ($module->id == null)) {
+        /* Hand off response error to upstream wrapper */
+        http_response_code(404 /* Not found */);
+        exit();
+    }
+} catch (\PDOException $ex) {
+    error_log('Module resolve error: ' . $ex->getMessage());
+    error_log('Check for proper database setup');
+
     /* Hand off response error to upstream wrapper */
-    http_response_code(404 /* Not found */);
+    http_response_code(503 /* Service unavailable */);
     exit();
 }
 

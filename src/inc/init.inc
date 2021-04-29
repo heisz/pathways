@@ -73,23 +73,37 @@ try {
              $ex->getMessage() . "\n\n";
         exit();
     } else {
-        error_log('Database conenction error: ' . $ex->getMessage());
+        error_log('Database connection error: ' . $ex->getMessage());
+
         /* Hand off response error to upstream wrapper */
         http_response_code(503 /* Service unavailable */);
         exit();
     }
 }
 
-/* TODO - integration user_id determination here! */
-$UserId = 'test';
+/* Resolve user information for non-CLI (publish) environment */
+if (!$isCLI) {
 
-/* Verify and retrieve user informatio for display */
-require_once('src/lib/user.lib');
-$User = new Pathways\User($UserId);
-if (($User == null) || ($User->id == null)) {
-    /* Hand off response error to upstream wrapper */
-    http_response_code(401 /* Unauthorized (unknown) */);
-    exit();
+    /* TODO - integration user_id determination here! */
+    $UserId = 'test';
+
+    /* Verify and retrieve user information for display */
+    try {
+        require_once('src/lib/user.lib');
+        $User = new Pathways\User($UserId);
+        if (($User == null) || ($User->id == null)) {
+            /* Hand off response error to upstream wrapper */
+            http_response_code(401 /* Unauthorized (unknown) */);
+            exit();
+        }
+    } catch (\PDOException $ex) {
+        error_log('Unable to resolve user information: ' . $ex->getMessage());
+        error_log('Check for proper database setup');
+
+        /* Hand off response error to upstream wrapper */
+        http_response_code(503 /* Service unavailable */);
+        exit();
+    }
 }
-
+    
 ?>
