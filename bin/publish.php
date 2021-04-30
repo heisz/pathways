@@ -34,6 +34,12 @@ if (!is_dir($BadgesDir)) {
         throw new \ErrorException('Failed to create assets/badges directory');
     }
 }
+$ResourcesDir = $AssetsDir . '/resources';
+if (!is_dir($ResourcesDir)) {
+    if (!mkdir($ResourcesDir)) {
+        throw new \ErrorException('Failed to create assets/resources directory');
+    }
+}
 
 /* There should just be the one argument - the content to publish */
 if ($argc != 2) {

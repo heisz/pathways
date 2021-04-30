@@ -273,7 +273,57 @@ class Unit {
      * Publish the underlying unit content to the data and image stores.
      */
     public function publish($ord) {
+        global $ResourcesDir;
         $schema = \Database::schema();
+
+        /* Rewrite the content for content and verify/transfer */
+        $resdir = $ResourcesDir . '/' . $this->moduleId . '/' . $this->id;
+        $urlpfx = '/resources/' . $this->moduleId . '/' . $this->id;
+        if (!is_dir($resdir)) {
+            if (!mkdir($resdir, 0777, true)) {
+                throw new \ErrorException('Failed to create unit resource dir');
+            }
+        }
+        while (preg_match('/\\[banner\s*ref="([^"]*)"([^]]*)\\]/i',
+                          $this->content, $matches, PREG_OFFSET_CAPTURE)) {
+            $this->content = substr($this->content, 0, $matches[0][1]) .
+                               '<img src="' . $urlpfx . '/' . $matches[1][0] .
+                                         '" class="unit-banner"' .
+                                 $matches[2][0] .  '/>' .
+                             substr($this->content,
+                                    $matches[0][1] + strlen($matches[0][0]));
+            if (!copy($matches[1][0], $resdir . '/' . $matches[1][0])) {
+                throw new \ErrorException('Failed to publish unit resource: ' .
+                                          $matches[1][0]);
+            }
+        }
+        while (preg_match('/\\[image\s*ref="([^"]*)"([^]]*)\\]/i',
+                          $this->content, $matches, PREG_OFFSET_CAPTURE)) {
+            $this->content = substr($this->content, 0, $matches[0][1]) .
+                               '<img src="' . $urlpfx . '/' . $matches[1][0] .
+                                         '" class="unit-image"' .
+                                 $matches[2][0] .  '/>' .
+                             substr($this->content,
+                                    $matches[0][1] + strlen($matches[0][0]));
+            if (!copy($matches[1][0], $resdir . '/' . $matches[1][0])) {
+                throw new \ErrorException('Failed to publish unit resource: ' .
+                                          $matches[1][0]);
+            }
+        }
+        while (preg_match('/\\[resource\s*ref="([^"]*)"([^]]*)\\]/i',
+                          $this->content, $matches, PREG_OFFSET_CAPTURE)) {
+            $this->content = substr($this->content, 0, $matches[0][1]) .
+                               '<a href="' . $urlpfx . '/' . $matches[1][0] .
+                                        '" class="unit-resource" ' .
+                                          'target="_blank">' .
+                                 trim($matches[2][0]) .  '</a>' .
+                             substr($this->content,
+                                    $matches[0][1] + strlen($matches[0][0]));
+            if (!copy($matches[1][0], $resdir . '/' . $matches[1][0])) {
+                throw new \ErrorException('Failed to publish unit resource: ' .
+                                          $matches[1][0]);
+            }
+        }
 
         /* Simulated upsert, presuming external transaction management */
         $qryStmt = \Database::prepare('SELECT unit_id ' .

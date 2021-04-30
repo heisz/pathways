@@ -284,11 +284,20 @@ footer {
 }
 
 .unit-content h2:first-of-type {
-    margin-top: 0;
+    margin-top: 1rem;
 }
 
 .unit-content h2 + p {
     margin-top: 0.4rem;
+}
+
+.unit-banner {
+    width: 100%;
+    border: 1px solid #808080;
+}
+
+.unit-image {
+    border: 1px solid #808080;
 }
 
 .unit-sidebar .sidebar-header {

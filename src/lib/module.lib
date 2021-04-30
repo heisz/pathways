@@ -99,7 +99,7 @@ class Module {
 
         /* Push the static badge instance */
         if (!copy($this->icon, $BadgesDir . '/' . $this->id . '.png')) {
-            throw new \ErrorException('Failed to public module icon');
+            throw new \ErrorException('Failed to publish module icon');
         }
 
         /* Simulated upsert, presuming external transaction management */
