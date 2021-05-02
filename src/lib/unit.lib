@@ -286,40 +286,43 @@ class Unit {
         }
         while (preg_match('/\\[banner\s*ref="([^"]*)"([^]]*)\\]/i',
                           $this->content, $matches, PREG_OFFSET_CAPTURE)) {
+            $fname = basename($matches[1][0]);
             $this->content = substr($this->content, 0, $matches[0][1]) .
-                               '<img src="' . $urlpfx . '/' . $matches[1][0] .
+                               '<img src="' . $urlpfx . '/' . $fname .
                                          '" class="unit-banner"' .
                                  $matches[2][0] .  '/>' .
                              substr($this->content,
                                     $matches[0][1] + strlen($matches[0][0]));
-            if (!copy($matches[1][0], $resdir . '/' . $matches[1][0])) {
+            if (!copy($matches[1][0], $resdir . '/' . $fname)) {
                 throw new \ErrorException('Failed to publish unit resource: ' .
                                           $matches[1][0]);
             }
         }
         while (preg_match('/\\[image\s*ref="([^"]*)"([^]]*)\\]/i',
                           $this->content, $matches, PREG_OFFSET_CAPTURE)) {
+            $fname = basename($matches[1][0]);
             $this->content = substr($this->content, 0, $matches[0][1]) .
-                               '<img src="' . $urlpfx . '/' . $matches[1][0] .
+                               '<img src="' . $urlpfx . '/' . $fname .
                                          '" class="unit-image"' .
                                  $matches[2][0] .  '/>' .
                              substr($this->content,
                                     $matches[0][1] + strlen($matches[0][0]));
-            if (!copy($matches[1][0], $resdir . '/' . $matches[1][0])) {
+            if (!copy($matches[1][0], $resdir . '/' . $fname)) {
                 throw new \ErrorException('Failed to publish unit resource: ' .
                                           $matches[1][0]);
             }
         }
         while (preg_match('/\\[resource\s*ref="([^"]*)"([^]]*)\\]/i',
                           $this->content, $matches, PREG_OFFSET_CAPTURE)) {
+            $fname = basename($matches[1][0]);
             $this->content = substr($this->content, 0, $matches[0][1]) .
-                               '<a href="' . $urlpfx . '/' . $matches[1][0] .
+                               '<a href="' . $urlpfx . '/' . $fname .
                                         '" class="unit-resource" ' .
                                           'target="_blank">' .
                                  trim($matches[2][0]) .  '</a>' .
                              substr($this->content,
                                     $matches[0][1] + strlen($matches[0][0]));
-            if (!copy($matches[1][0], $resdir . '/' . $matches[1][0])) {
+            if (!copy($matches[1][0], $resdir . '/' . $fname)) {
                 throw new \ErrorException('Failed to publish unit resource: ' .
                                           $matches[1][0]);
             }
@@ -634,7 +637,7 @@ class Unit {
                                 $moduleProgress['pointsEarned'] ]);
 
             $updStmt = \Database::prepare('UPDATE ' . $schema . 'users ' .
-                                          'SET badge_count=badge_count+1, ' .
+                                          'SET badge_count=badge_count+1 ' .
                                           'WHERE user_id=?');
             $updStmt->execute([ $UserId ]);
         }
