@@ -94,11 +94,11 @@ class Module {
      * Publish the underlying module content to the data and image stores.
      */
     public function publish() {
-        global $GlobalConfig, $BadgesDir;
+        global $BadgesDir;
         $schema = \Database::schema();
 
         /* Push the static badge instance */
-        if (!copy($this->icon, $BadgesDir . '/' . $this->id . '.png')) {
+        if (!copy($this->icon, $BadgesDir . '/mod-' . $this->id . '.png')) {
             throw new \ErrorException('Failed to publish module icon');
         }
 
@@ -110,26 +110,24 @@ class Module {
         $preview = ($this->inPreview) ? 't' : 'f';
         if (count($qryStmt->fetchAll()) != 0) {
             $updStmt = \Database::prepare('UPDATE ' . $schema . 'modules ' .
-                                          'SET icon=?, title=?, synopsis=?, ' .
+                                          'SET title=?, synopsis=?, ' .
                                               'in_preview=?, est_time=?, ' .
                                               'points=?, last_update=NOW() ' .
                                           'WHERE module_id=?');
-            $updStmt->execute([ $this->icon, $this->title, $this->synopsis,
-                                $preview, $this->time, $this->points,
-                                $this->id ]);
+            $updStmt->execute([ $this->title, $this->synopsis, $preview,
+                                $this->time, $this->points, $this->id ]);
             if ($updStmt->rowCount() != 1) {
                 throw new \ErrorException(
                                'Failed to update path, target not found?');
             }
         } else {
             $insStmt = \Database::prepare('INSERT INTO ' . $schema . 'modules' .
-                                          '(module_id, icon, title, synopsis, '.
+                                          '(module_id, title, synopsis, '.
                                            'in_preview, est_time, points, ' .
                                            'last_update) ' .
-                                          'VALUES(?, ?, ?, ?, ?, ?, ?, NOW())');
-            $insStmt->execute([ $this->id, $this->icon, $this->title,
-                                $this->synopsis, $preview, $this->time,
-                                $this->points ]);
+                                          'VALUES(?, ?, ?, ?, ?, ?, NOW())');
+            $insStmt->execute([ $this->id, $this->title, $this->synopsis,
+                                $preview, $this->time, $this->points ]);
         }
 
         echo 'Published [' . $this->id . '] ' . $this->title . "\n";
@@ -227,7 +225,7 @@ class Module {
         return '<div class="module-wrapper">' . "\n" .
                  '<div class="module-header">' . "\n" .
                    '<div class="module-header-badge">' . "\n" .
-                     '<img src="/badges/' . $this->id . '.png" '.
+                     '<img src="/badges/mod-' . $this->id . '.png" '.
                           'alt="module badge"/>' . "\n" .
                      (($this->completed == null) ? '' :
                        '<svg xmlns="http://www.w3.org/2000/svg" ' .

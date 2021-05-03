@@ -83,6 +83,11 @@ class Path {
             $mod->publish();
         }
 
+        /* Push the static badge instance */
+        if (!copy($this->icon, $BadgesDir . '/path-' . $this->id . '.png')) {
+            throw new \ErrorException('Failed to publish module icon');
+        }
+
         /* Simulated upsert, presuming external transaction management */
         $qryStmt = \Database::prepare('SELECT path_id ' .
                                       'FROM ' . $schema . 'paths ' .
@@ -91,22 +96,22 @@ class Path {
         $preview = ($this->inPreview) ? 't' : 'f';
         if (count($qryStmt->fetchAll()) != 0) {
             $updStmt = \Database::prepare('UPDATE ' . $schema . 'paths ' .
-                                          'SET icon=?, title=?, synopsis=?, ' .
+                                          'SET title=?, synopsis=?, ' .
                                               'in_preview=? ' .
                                           'WHERE path_id=?');
-            $updStmt->execute([ $this->icon, $this->title, $this->synopsis,
-                                $preview, $this->id ]);
+            $updStmt->execute([ $this->title, $this->synopsis, $preview,
+                                $this->id ]);
             if ($updStmt->rowCount() != 1) {
                 throw new \ErrorException(
                                'Failed to update path, target not found?');
             }
         } else {
             $insStmt = \Database::prepare('INSERT INTO ' . $schema . 'paths' .
-                                          '(path_id, icon, title, synopsis, ' .
+                                          '(path_id, title, synopsis, ' .
                                            'in_preview) ' .
-                                          'VALUES(?, ?, ?, ?, ?)');
-            $insStmt->execute([ $this->id, $this->icon, $this->title,
-                                $this->synopsis, $preview ]);
+                                          'VALUES(?, ?, ?, ?)');
+            $insStmt->execute([ $this->id, $this->title, $this->synopsis,
+                                $preview ]);
         }
 
         echo 'Published [' . $this->id . '] ' . $this->title . "\n";
