@@ -24,8 +24,8 @@ class User {
         /* Verify the user existence */
         $qryStmt = \Database::prepare('SELECT user_name, can_preview,
                                               badge_count, total_points ' .
-                                       'FROM ' . $schema . 'users ' .
-                                       'WHERE user_id=?');
+                                      'FROM ' . $schema . 'users ' .
+                                      'WHERE user_id=?');
         $qryStmt->execute([ $userId ]);
         $res = $qryStmt->fetchAll();
         if (count($res) != 1) return;
@@ -58,5 +58,139 @@ class User {
                '<span class="header-user-gravatar">'.
                    $gravatar .
                '</span>';
+    }
+
+    /* Handy query bits for aggregating progress */
+    const AGG_MOD_COMP = 'COALESCE(sum(un.est_time) ' .
+                                 'FILTER (WHERE bdg.points IS NOT NULL), 0)';
+    const AGG_MOD_INC = 'COALESCE(sum(un.est_time) ' .
+                                 'FILTER (WHERE (bdg.points IS NULL) AND ' .
+                                               '(ast.points IS NOT NULL)), 0)';
+    private static function ModJoin() {
+        $schema = \Database::schema();
+
+        return 'JOIN ' . $schema . ' units AS un ' .
+                 'ON (mod.module_id=un.module_id) ' .
+               'LEFT JOIN ' . $schema . 'badges AS bdg ' .
+                 'ON (mod.module_id=bdg.module_id AND ' .
+                     'bdg.user_id=?) ' .
+               'LEFT JOIN ' . $schema . 'assessments AS ast ' .
+                 'ON (un.module_id=ast.module_id AND ' .
+                     'un.unit_id=ast.unit_id AND ' .
+                     'ast.user_id=?) ';
+    }
+
+    /* Retrieve in-progress path and module information */
+    public function inProgressPaths($limit, $offset = 0) {
+        $schema = \Database::schema();
+
+        /* In this case we need sum of completed badges and unit (from inc) */
+        $agg = '(' . self::AGG_MOD_COMP . ' + ' . self::AGG_MOD_INC . ')';
+
+        /* Queries get pretty convoluted! */
+        $qry = 'SELECT pth.path_id, pth.title, pth.synopsis, pth.points, ' .
+                      'sum(un.est_time), ' . $agg . ' ' .
+               'FROM ' . $schema . 'paths AS pth ' .
+               'JOIN ' . $schema . 'signposts AS pst ' .
+                 'ON (pth.path_id=pst.path_id) ' .
+               'JOIN ' . $schema . 'modules AS mod ' .
+                 'ON (pst.module_id=mod.module_id) ' .
+               self::ModJoin() .
+               'GROUP BY pth.path_id ' .
+               'HAVING ((' . $agg . '<sum(un.est_time)) AND ' .
+                       '(' . $agg . '!=0))' . ' ' .
+               'ORDER BY pth.path_id ' .
+               'OFFSET ' . $offset . ' ' .
+               'LIMIT ' . $limit;
+        $qryStmt = \Database::prepare($qry);
+
+        $retval = [];
+        $qryStmt->execute([ $this->id, $this->id ]);
+        foreach ($qryStmt->fetchAll() as $mod) {
+            $pct = intval(($mod[4] - $mod[5]) * 100 / $mod[4]);
+            $rem = Utility::FormatInterval($mod[5]);
+            array_push($retval, array(
+                         'id' => $mod[0],
+                         'icon' => '/badges//path-' . $mod[0] . '.png',
+                         'title' => $mod[1],
+                         'synopsis' => $mod[2],
+                         'points' => $mod[3],
+                         'complete' => false,
+                         'progress' => $rem,
+                         'progbar' => Utility::FormatProgressBar($pct)));
+        }
+
+        return $retval;
+    }
+    public function inProgressModules($limit, $offset = 0) {
+        $schema = \Database::schema();
+
+        /* Queries get pretty convoluted! */
+        $qry = 'SELECT mod.module_id, mod.title, mod.synopsis, mod.points, ' .
+                      'sum(un.est_time), ' . self::AGG_MOD_INC . ' ' .
+               'FROM ' . $schema . 'modules AS mod ' .
+               self::ModJoin() .
+               'GROUP BY mod.module_id ' .
+               'HAVING (' . self::AGG_MOD_INC . '!= 0) ' .
+               'ORDER BY mod.module_id '  .
+               'OFFSET ' . $offset . ' ' .
+               'LIMIT ' . $limit;
+        $qryStmt = \Database::prepare($qry);
+
+        $retval = [];
+        $qryStmt->execute([ $this->id, $this->id ]);
+        foreach ($qryStmt->fetchAll() as $mod) {
+            $pct = intval(($mod[4] - $mod[5]) * 100 / $mod[4]);
+            $rem = Utility::FormatInterval($mod[5]);
+            array_push($retval, array(
+                         'id' => $mod[0],
+                         'icon' => '/badges/mod-' . $mod[0] . '.png',
+                         'title' => $mod[1],
+                         'synopsis' => $mod[2],
+                         'points' => $mod[3],
+                         'complete' => false,
+                         'progress' => $rem,
+                         'progbar' => Utility::FormatProgressBar($pct)));
+        }
+
+        return $retval;
+    }
+
+    /* Similar method to pull newest (unworked) modules */
+    public function newestModules($limit, $offset = 0) {
+        $schema = \Database::schema();
+
+        /* Not as bad but... */
+        $qry = 'SELECT mod.module_id, mod.title, mod.synopsis, mod.points, ' .
+                      'sum(un.est_time) ' .
+               'FROM ' . $schema . 'modules AS mod ' .
+               'JOIN ' . $schema . ' units AS un ' .
+                 'ON (mod.module_id=un.module_id) ' .
+               'LEFT JOIN ' . $schema . 'assessments AS ast ' .
+                 'ON (mod.module_id=ast.module_id AND ' .
+                     'un.unit_id=ast.unit_id AND ' .
+                     'ast.user_id=?) ' .
+               'GROUP BY mod.module_id ' .
+               'HAVING (COUNT(ast.module_id) = 0) ' .
+               'ORDER BY mod.last_update DESC '  .
+               'OFFSET ' . $offset . ' ' .
+               'LIMIT ' . $limit;
+        $qryStmt = \Database::prepare($qry);
+
+        $retval = [];
+        $qryStmt->execute([ $this->id ]);
+        foreach ($qryStmt->fetchAll() as $mod) {
+            $rem = Utility::FormatInterval($mod[4]);
+            array_push($retval, array(
+                         'id' => $mod[0],
+                         'icon' => '/badges/mod-' . $mod[0] . '.png',
+                         'title' => $mod[1],
+                         'synopsis' => $mod[2],
+                         'points' => $mod[3],
+                         'complete' => false,
+                         'progress' => $rem));
+        }
+
+        return $retval;
     }
 }
