@@ -34,7 +34,6 @@ CREATE SCHEMA pathways;
 -- Root of it all, modules that are available for learning!
 CREATE TABLE pathways.modules (
     module_id VARCHAR(64) NOT NULL,
-    icon VARCHAR(255) NOT NULL,
     title VARCHAR(255) NOT NULL,
     synopsis TEXT NOT NULL,
     in_preview BOOLEAN NOT NULL DEFAULT 'y',
@@ -48,9 +47,9 @@ CREATE TABLE pathways.modules (
 -- Paths are collection of references to module sets (signposts)
 CREATE TABLE pathways.paths (
     path_id VARCHAR(64) NOT NULL,
-    icon VARCHAR(255) NOT NULL,
     title VARCHAR(255) NOT NULL,
     synopsis TEXT NOT NULL,
+    points INT NOT NULL,
     in_preview BOOLEAN NOT NULL DEFAULT 'y',
 
     PRIMARY KEY (path_id)
@@ -58,10 +57,12 @@ CREATE TABLE pathways.paths (
 
 CREATE TABLE pathways.signposts (
     path_id VARCHAR(64) NOT NULL,
-    title VARCHAR(255) NOT NULL,
-    synopsis TEXT NOT NULL,
+    module_id VARCHAR(64) NOT NULL,
+    ordr INT NOT NULL,
 
-    PRIMARY KEY (path_id)
+    PRIMARY KEY (path_id, module_id),
+    FOREIGN KEY (path_id) REFERENCES pathways.paths(path_id),
+    FOREIGN KEY (module_id) REFERENCES pathways.modules(module_id)
 );
 
 CREATE TYPE pathways.assesstype AS ENUM ('quiz', 'lab');
@@ -83,7 +84,6 @@ CREATE TABLE pathways.units (
     activity TEXT NULL,
 
     PRIMARY KEY (module_id, unit_id),
-    UNIQUE (module_id, unit_id, ordr),
     FOREIGN KEY (module_id) REFERENCES pathways.modules(module_id)
 );
 
