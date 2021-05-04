@@ -107,8 +107,8 @@ class User {
         $retval = [];
         $qryStmt->execute([ $this->id, $this->id ]);
         foreach ($qryStmt->fetchAll() as $mod) {
-            $pct = intval(($mod[4] - $mod[5]) * 100 / $mod[4]);
-            $rem = Utility::FormatInterval($mod[5]);
+            $pct = intval($mod[5] * 100 / $mod[4]);
+            $rem = Utility::FormatInterval($mod[4] - $mod[5]);
             array_push($retval, array(
                          'id' => $mod[0],
                          'icon' => '/badges//path-' . $mod[0] . '.png',
@@ -140,8 +140,8 @@ class User {
         $retval = [];
         $qryStmt->execute([ $this->id, $this->id ]);
         foreach ($qryStmt->fetchAll() as $mod) {
-            $pct = intval(($mod[4] - $mod[5]) * 100 / $mod[4]);
-            $rem = Utility::FormatInterval($mod[5]);
+            $pct = intval($mod[5] * 100 / $mod[4]);
+            $rem = Utility::FormatInterval($mod[4] - $mod[5]);
             array_push($retval, array(
                          'id' => $mod[0],
                          'icon' => '/badges/mod-' . $mod[0] . '.png',
@@ -187,7 +187,6 @@ class User {
                          'title' => $mod[1],
                          'synopsis' => $mod[2],
                          'points' => $mod[3],
-                         'complete' => false,
                          'progress' => $rem));
         }
 

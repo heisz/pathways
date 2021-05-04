@@ -37,4 +37,35 @@ class Utility {
              '</div>' .
            '</div>';
     }
+
+    /* Common method to format a summary cell */
+    public static function FormatPathModCell($pm) {
+        $val = '<div class="pmcell">' .
+                 '<div class="pmcell-header">' .
+                   '<div class="pmcell-header-badge">' . "\n" .
+                     '<img src="' . $pm['icon'] . '" '.
+                          'alt="Path/module badge"/>' . "\n" .
+                   '</div>' .
+                   '<div class="pmcell-header-points">' .
+                               $pm['points'] .  ' points</div>' .
+                 '</div>' .
+                 '<div class="pmcell-title">' . $pm['title'] . '</div>' .
+                 '<div class="pmcell-synopsis">' . $pm['synopsis'] . '</div>';
+        if ($pm['complete']) {
+        } else if ($pm['complete'] === false) {
+            $val = $val .
+               '<div class="pmcell-progrow">' .
+                   '<div class="pmcell-progress">'.
+                                  $pm['progress'] . ' remaining</div>' .
+                   $pm['progbar'] .
+               '</div>';
+        } else {
+            $val = $val .
+               '<div class="pmcell-progrow">' .
+                   '<div class="pmcell-progress">'.
+                                  $pm['progress'] . ' total</div>' .
+               '</div>';
+        }
+        return $val . '</div>';
+    }
 }

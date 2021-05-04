@@ -99,6 +99,95 @@ footer {
 
 /* ------------------------------------- */
 
+.pmcell-link {
+    text-decoration: none;
+    margin-left: 1rem;
+    display: flex;
+}
+
+.pmcell {
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    background-color: #ffffff;
+    width: 20rem;
+    border: 1px solid #d6d6d6;
+    box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.1);
+}
+
+.pmcell-header {
+    display: flex;
+    justify-content: space-between;
+}
+
+.pmcell-header-badge {
+}
+
+.pmcell-header-points {
+    color: #048149;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.pmcell-title {
+    font-weight: 700;
+}
+
+.pmcell-synopsis {
+    margin-bottom: 1rem;
+}
+
+.pmcell-progrow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+}
+
+.pmcell-progress {
+    color: #606060;
+    font-size: 0.9rem;
+}
+
+/* ------------------------------------- */
+
+.home-welcome-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem;
+    background: #3560a5;
+    color: #ffffff;
+}
+
+.home-welcome-header a {
+    color: #ffffff;
+}
+
+.home-content {
+   padding: 2rem;
+   background-color: #fffaf3;
+}
+
+.home-header {
+    font-weight: 500;
+    font-size: 1.5rem;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+.home-header:first-of-type {
+    margin-top: 0;
+}
+
+/* TODO - use media queries with the grid */
+.home-summary-row {
+   display: flex;
+   flex-flow: wrap;
+}
+
+/* ------------------------------------- */
+
 .module-wrapper {
     padding: 2rem 3rem;
 }
