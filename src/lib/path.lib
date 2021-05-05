@@ -35,6 +35,24 @@ class Path {
 
     /* Internal method to load the path instance from the database by id */
     private function _pdoConstruct($id) {
+        global $UserId;
+        $schema = \Database::schema();
+
+        /* Query the core unit data, validating existence */
+        $qryStmt = \Database::prepare('SELECT pth.path_id, pth.title, ' .
+                                             'pth.synopsis, pth.in_preview, ' .
+                                             'pth.est_time, pth.points ' .
+                                      'FROM ' . $schema . 'paths AS pth ' .
+                                      'WHERE pth.path_id=?');
+        $qryStmt->execute([ $id ]);
+        $res = $qryStmt->fetchAll();
+        if (count($res) != 1) return;
+        $this->id = $id;
+        $this->title = $res[0][1];
+        $this->synopsis = $res[0][2];
+        $this->inPreview = $res[0][3];
+        $this->time = $res[0][4];
+        $this->points = $res[0][5];
     }
 
     /* Internal method to construct the path instance from an XML node */
@@ -58,12 +76,19 @@ class Path {
 
         /* Paths can contain module references or full definitions */
         $this->modules = [];
+        $this->references = [];
         foreach($node->children() as $child) {
             if ($child->getName() == 'Module') {
                 $mod = new Module($child);
                 $mod->inPreview = $this->inPreview;
                 array_push($this->modules, $mod);
+                array_push($this->references, $mod->id);
             } else if ($child->getName() == 'ModuleReference') {
+                if ((null == ($modId = $child['id']))) {
+                    throw new \ErrorException(
+                                 'Missing "id" required for <ModuleReference>');
+                }
+                array_push($this->references, $modId);
             } else {
                 throw new \ErrorException( 
                            'Invalid child, <Path> can only contain <Module>' .
@@ -83,6 +108,18 @@ class Path {
             $mod->publish();
         }
 
+        /* Validate and collect summary information for the path */
+        $qry = 'SELECT COUNT(module_id), SUM(est_time), SUM(points) ' .
+               'FROM ' . $schema . 'modules ' .
+               'WHERE module_id IN (' .
+                   str_repeat('?,', count($this->references) -1) . '?)';
+        $qryStmt = \Database::prepare($qry);
+        $qryStmt->execute($this->references);
+        $data = $qryStmt->fetch();
+        if ($data[0] != count($this->references)) {
+            throw new \ErrorException('One or more module ids are unreferenced');
+        }
+
         /* Push the static badge instance */
         if (!copy($this->icon, $BadgesDir . '/path-' . $this->id . '.png')) {
             throw new \ErrorException('Failed to publish module icon');
@@ -97,21 +134,37 @@ class Path {
         if (count($qryStmt->fetchAll()) != 0) {
             $updStmt = \Database::prepare('UPDATE ' . $schema . 'paths ' .
                                           'SET title=?, synopsis=?, ' .
-                                              'in_preview=? ' .
+                                              'in_preview=?, est_time = ?, ' .
+                                              'points=? ' .
                                           'WHERE path_id=?');
             $updStmt->execute([ $this->title, $this->synopsis, $preview,
-                                $this->id ]);
+                                $data[1], $data[2], $this->id ]);
             if ($updStmt->rowCount() != 1) {
                 throw new \ErrorException(
                                'Failed to update path, target not found?');
             }
+
+            /* Delete current signposts (full replacement) */
+            $delStmt = \Database::prepare('DELETE FROM ' .
+                                                $schema . 'signposts ' .
+                                          'WHERE path_id=?');
+            $delStmt->execute([ $this->id ]);
         } else {
             $insStmt = \Database::prepare('INSERT INTO ' . $schema . 'paths' .
                                           '(path_id, title, synopsis, ' .
-                                           'in_preview) ' .
-                                          'VALUES(?, ?, ?, ?)');
+                                           'in_preview, est_time, points) ' .
+                                          'VALUES(?, ?, ?, ?, ?, ?)');
             $insStmt->execute([ $this->id, $this->title, $this->synopsis,
-                                $preview ]);
+                                $preview, $data[1], $data[2] ]);
+        }
+
+        /* Yes, not efficient.  But for the number of modules in a path, meh */
+        $pstStmt = \Database::prepare('INSERT INTO ' . $schema . 'signposts ' .
+                                      '(path_id, module_id, ordr) ' .
+                                      'VALUES(?, ?, ?)');
+        $idx = 0;
+        foreach ($this->references as $modId) {
+            $pstStmt->execute([ $this->id, $modId, ++$idx ]);
         }
 
         echo 'Published [' . $this->id . '] ' . $this->title . "\n";

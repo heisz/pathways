@@ -89,7 +89,7 @@ class User {
 
         /* Queries get pretty convoluted! */
         $qry = 'SELECT pth.path_id, pth.title, pth.synopsis, pth.points, ' .
-                      'sum(un.est_time), ' . $agg . ' ' .
+                      'pth.est_time, ' . $agg . ' ' .
                'FROM ' . $schema . 'paths AS pth ' .
                'JOIN ' . $schema . 'signposts AS pst ' .
                  'ON (pth.path_id=pst.path_id) ' .
@@ -127,7 +127,7 @@ class User {
 
         /* Queries get pretty convoluted! */
         $qry = 'SELECT mod.module_id, mod.title, mod.synopsis, mod.points, ' .
-                      'sum(un.est_time), ' . self::AGG_MOD_INC . ' ' .
+                      'mod.est_time, ' . self::AGG_MOD_INC . ' ' .
                'FROM ' . $schema . 'modules AS mod ' .
                self::ModJoin() .
                'GROUP BY mod.module_id ' .
@@ -162,7 +162,7 @@ class User {
 
         /* Not as bad but... */
         $qry = 'SELECT mod.module_id, mod.title, mod.synopsis, mod.points, ' .
-                      'sum(un.est_time) ' .
+                      'mod.est_time ' .
                'FROM ' . $schema . 'modules AS mod ' .
                'JOIN ' . $schema . ' units AS un ' .
                  'ON (mod.module_id=un.module_id) ' .

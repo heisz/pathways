@@ -49,6 +49,7 @@ CREATE TABLE pathways.paths (
     path_id VARCHAR(64) NOT NULL,
     title VARCHAR(255) NOT NULL,
     synopsis TEXT NOT NULL,
+    est_time INT NOT NULL,
     points INT NOT NULL,
     in_preview BOOLEAN NOT NULL DEFAULT 'y',
 
