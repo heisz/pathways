@@ -22,7 +22,7 @@ if ($User->badgeCount == 0) {
                  'might I suggest starting with the ' .
                  '<a href="/module/pathways-basic">Pathways Basics</a> ' .
                  'module?' .
-           '</div>' . "\n";
+           '</div>' . "\n" .
          '</div>' . "\n";
 }
 
@@ -65,6 +65,14 @@ if (count($newMods) != 0) {
              '</a>' . "\n";
     }
     echo '</div>' . "\n";
+}
+
+if ((count($ipMods) == 0) && (count($ipPaths) == 0) && (count($newMods) == 0)) {
+    echo '<div class="home-welcome-header">' .
+           '<div>Well, it appears you\'ve completed <i>everything</i>! ' .
+                'Perhaps you\'d like to write some new content?' .
+           '</div>' . "\n" .
+         '</div>' . "\n";
 }
 
 echo '</div>' . "\n";

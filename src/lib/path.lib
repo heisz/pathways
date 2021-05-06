@@ -77,7 +77,7 @@ class Path {
         /* Paths can contain module references or full definitions */
         $this->modules = [];
         $this->references = [];
-        foreach($node->children() as $child) {
+        foreach ($node->children() as $child) {
             if ($child->getName() == 'Module') {
                 $mod = new Module($child);
                 $mod->inPreview = $this->inPreview;
@@ -101,6 +101,7 @@ class Path {
      * Publish the underlying path content to the data and image stores.
      */
     public function publish() {
+        global $BadgesDir;
         $schema = \Database::schema();
 
         /* First, publish the child module instances */
@@ -117,7 +118,7 @@ class Path {
         $qryStmt->execute($this->references);
         $data = $qryStmt->fetch();
         if ($data[0] != count($this->references)) {
-            throw new \ErrorException('One or more module ids are unreferenced');
+            throw new \ErrorException('Some module ids are unreferenced');
         }
 
         /* Push the static badge instance */
@@ -168,6 +169,119 @@ class Path {
         }
 
         echo 'Published [' . $this->id . '] ' . $this->title . "\n";
+    }
+
+    /* General rendering function, transforms indexing for sidebar */
+    public function renderContent() {
+        Global $UserId;
+        $schema = \Database::schema();
+
+        /* Big linear query to build the path/module/unit list */
+        $qry = 'SELECT mod.module_id, mod.title, mod.synopsis, ' . 
+                      'mod.est_time, mod.points, bdg.completed, ' .
+                      'un.unit_id, un.title, un.synopsis, un.est_time, ' .
+                      'un.points, ast.points, ast.completed ' .
+               'FROM ' . $schema . 'paths AS pth ' .
+               'JOIN ' . $schema . 'signposts AS pst ' .
+                 'ON (pth.path_id=pst.path_id) ' .
+               'JOIN ' . $schema . 'modules AS mod ' .
+                 'ON (pst.module_id=mod.module_id)' .
+               'JOIN ' . $schema . 'units AS un ' .
+                 'ON (mod.module_id=un.module_id) ' .
+               'LEFT JOIN ' . $schema . 'badges AS bdg ' .
+                 'ON (mod.module_id=bdg.module_id AND ' .
+                     'bdg.user_id=?)' .
+               'LEFT JOIN ' . $schema . 'assessments AS ast ' .
+                 'ON (un.module_id=ast.module_id AND ' .
+                     'un.unit_id=ast.unit_id AND ' .
+                     'ast.user_id=?)' .
+               'WHERE pth.path_id=? ' .
+               'ORDER BY pst.ordr, un.ordr';
+
+        $qryStmt = \Database::prepare($qry);
+        $qryStmt->execute([ $UserId, $UserId, $this->id ]);
+
+        $modList = [];
+        $lastMod = null;
+        $totalTime = $pointsEarned = $timeLeft = 0;
+        $comp = null;
+        foreach ($qryStmt->fetchAll() as $row) {
+            if (($lastMod == null) || ($row[0] != $lastMod['id'])) {
+                if ($lastMod != null) $modList[] = $lastMod;
+                $lastMod = array('id' => $row[0],
+                                 'title' => $row[1],
+                                 'synopsis' => $row[2],
+                                 'time' => $row[3],
+                                 'points' => $row[4],
+                                 'completed' => $row[5],
+                                 'unitList' => '',
+                                 'earned' => 0,
+                                 'remaining' => 0);
+            }
+
+            $unitHRef = '/unit/' . $row[0] . '/' . $row[6];
+            $lastMod['unitList'] = $lastMod['unitList'] .
+                Module::renderModuleUnitContent($unitHRef, $row[7], $row[8],
+                                                $row[9], $row[10], $row[11],
+                                                $row[12]);
+           $totalTime += $row[9];
+           if ($row[12] != null) {
+               $pointsEarned += $row[11];
+               $lastMod['earned'] = $lastMod['earned'] + $row[11];
+               if (($comp == null) || ($row[12] > $comp)) $comp = $row[12];
+           } else {
+               $timeLeft += $row[9];
+               $lastMod['remaining'] = $lastMod['remaining'] + $row[9];
+           }
+        }
+        $modList[] = $lastMod;
+
+        /* Format progress or completion */
+        if ($timeLeft == 0) {
+            $progress = 'Completed ' . Utility::FormatDate($comp);
+            $progbar = '';
+        } else {
+            $progress = Utility::FormatInterval($timeLeft) . ' remaining';
+
+            $pct = intval(($totalTime - $timeLeft) * 100 / $totalTime);
+            $progbar = Utility::FormatProgressBar($pct);
+        }
+        if ($pointsEarned != 0) {
+            $progress = $progress . ', ' . $pointsEarned . ' points earned';
+        }
+
+        $pth = Module::RenderPMBanner('path-' . $this->id, $this->title,
+                                      null, $this->synopsis, $this->points,
+                                      $progress, $progbar, ($timeLeft == 0));
+
+        $pth = $pth . '<div class="path-module-list">' . "\n";
+
+        foreach ($modList as $mod) {
+            if ($mod['completed'] != null) {
+                $progress = 'Completed ' .
+                                Utility::FormatDate($mod['completed']);
+                $progbar = '';
+            } else {
+                $progress = Utility::FormatInterval($mod['remaining']) .
+                            ' remaining';
+                $pct = intval(($mod['time'] - $mod['remaining']) *100 /
+                                                             $mod['time']);
+                $progbar = Utility::FormatProgressBar($pct);
+            }
+
+            $pth = $pth . Module::renderPMBanner('mod-' . $mod['id'],
+                                                 $mod['title'],
+                                                 '/module/' . $mod['id'],
+                                                 $mod['synopsis'],
+                                                 $mod['points'],
+                                                 $progress, $progbar,
+                                                 $mod['completed']) .
+                              '<div class="pathmod-unit-list">' . "\n" .
+                                  $mod['unitList'] .
+                              '</div></div>';
+        }
+
+        return $pth;
     }
 }
 

@@ -112,6 +112,7 @@ footer {
     background-color: #ffffff;
     width: 20rem;
     border: 1px solid #d6d6d6;
+    border-radius: 8px;
     box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.1);
 }
 
@@ -188,11 +189,11 @@ footer {
 
 /* ------------------------------------- */
 
-.module-wrapper {
+.pathmod-wrapper {
     padding: 2rem 3rem;
 }
 
-.module-header {
+.pathmod-header {
     border-bottom: 1px solid #d6d6d6;
     padding-bottom: 1rem;
     display: flex;
@@ -200,12 +201,12 @@ footer {
     width: 100%;
 }
 
-.module-header-badge {
+.pathmod-header-badge {
     margin-right: 1rem;
     position: relative;
 }
 
-.module-header-badge svg {
+.pathmod-header-badge svg {
     position: absolute;
     top: -0.2rem;
     right: -0.2rem;
@@ -220,41 +221,45 @@ footer {
     flex-shrink: 0;
 }
 
-.module-header-info {
+.pathmod-header-info {
     flex-grow: 1;
 }
 
-.module-header-row {
+.pathmod-header-row {
     display: inline-flex;
     align-items: center;
     justify-content: space-between;
     width: 100%;
 }
 
-.module-header-title {
+.pathmod-header-title {
     font-weight: 700;
     font-size: 1.5rem;
     line-height: 2rem;
 }
 
-.module-header-points {
+.pathmod-header-points {
     color: #048149;
     font-weight: 700;
     font-size: 1.2rem;
 }
 
-.module-header-synopsis {
+.pathmod-header-synopsis {
     font-weight: 500;
     font-size: 1rem;
     color: #606060;
 }
 
-.module-header-progress {
+.pathmod-header-progress {
     color: #606060;
     font-size: 0.9rem;
 }
 
-.module-unit-list {
+.pathmod-module-list {
+    margin: 0 4rem;
+}
+
+.pathmod-unit-list {
     display: flex;
     flex-direction: column;
     align-items: center;

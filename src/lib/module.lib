@@ -139,7 +139,88 @@ class Module {
         }
     }
 
-    /* General rendering function, transforms indexing for sidebar */
+    /* Common rendering methods for units in modules and modules in paths */
+    public static function RenderModuleUnitContent($unitHRef, $title, $synopsis,
+                                                   $time, $points, $earned,
+                                                   $comp) {
+        $unitContent =
+            '<div class="module-unit-row">' .
+              '<div class="module-unit-row-left">' .
+                '<a href="' . $unitHRef . '">' . $title . '</a>' . "\n" .
+                '<div class="module-unit-row-synopsis">' .
+                   $synopsis . '</div>' . "\n";
+
+        if ($comp != null) {
+            $unitContent = $unitContent .
+                        '<div class="module-unit-row-statistics">' .
+                          'Completed ' .  Utility::FormatDate($comp) .
+                          ', ' . $earned . ' points earned' .
+                        '</div></div>' .
+                        '<a class="module-unit-row-complete" ' .
+                           'href="' . $unitHRef . '">' .
+                          '<svg xmlns="http://www.w3.org/2000/svg" ' .
+                               'viewBox="0 0 24 24">' .
+                            '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 ' .
+                                     '21 7l-1.41-1.41L9 16.17z"/>' .
+                          '</svg>' .
+                        '</a>';
+        } else {
+            $unitContent = $unitContent .
+                        '<div class="module-unit-row-statistics">' .
+                          Utility::FormatInterval($time) .
+                          ', ' . $points . ' points' .
+                        '</div></div>' . 
+                        '<a class="module-unit-row-incomplete" ' .
+                           'href="' . $unitHRef . '">' .
+                          '<svg xmlns="http://www.w3.org/2000/svg" ' .
+                               'viewBox="0 0 24 24">' .
+                            '<path d="M12 4l-1.41 1.41L16.17 ' .
+                                     '11H4v2h12.17l-5.58 5.59L12 ' .
+                                     '20l8-8-8-8z"/>' .
+                          '</svg>' .
+                        '</a>';
+        }
+
+        return $unitContent . '</div>' . "\n";
+    }
+
+    public static function RenderPMBanner($badge, $title, $href, $synopsis,
+                                          $points, $progress, $progbar, $comp) {
+        return '<div class="pathmod-wrapper">' . "\n" .
+                 '<div class="pathmod-header">' . "\n" .
+                   '<div class="pathmod-header-badge">' . "\n" .
+                     '<img src="/badges/' . $badge . '.png" '.
+                          'alt="Module badge"/>' . "\n" .
+                     (($comp == null) ? '' :
+                       '<svg xmlns="http://www.w3.org/2000/svg" ' .
+                            'viewBox="0 0 24 24">' .
+                         '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 ' .
+                                  '21 7l-1.41-1.41L9 16.17z"/>' .
+                       '</svg>' . "\n") .
+                   '</div>' . "\n" .
+                   '<div class="pathmod-header-info">' .
+                     '<div class="pathmod-header-row">' .
+                       '<div class="pathmod-header-title">' .
+                         (($href == null) ?  $title :
+                              '<a href="' . $href . '">' . $title . '</a>') .
+                       '</div>' . "\n" .
+                       '<div class="pathmod-header-points">' .
+                         $points . ' points</div>' . "\n" .
+                     '</div>' . "\n" .
+                     '<div class="pathmod-header-synopsis">' .
+                       $synopsis . '</div>' . "\n" .
+                     '<div class="pathmod-header-row">' .
+                       '<div class="pathmod-header-progress">' .
+                         $progress .
+                       '</div>' .  $progbar .
+                     '</div>' . "\n" .
+                   '</div>' . "\n" .
+                 '</div>' . "\n";
+
+        /* Note, wrapper leaves an open div */
+    }
+
+    /* General rendering function, collects units into modules */
     public function renderContent() {
         Global $UserId;
         $schema = \Database::schema();
@@ -164,48 +245,15 @@ class Module {
         foreach($qryStmt->fetchAll() as $unit) {
             $unitHRef = '/unit/' . $this->id . '/' . $unit[0];
             $unitList = $unitList .
-                '<div class="module-unit-row">' .
-                  '<div class="module-unit-row-left">' .
-                    '<a href="' . $unitHRef . '">' . $unit[1] . '</a>' . "\n" .
-                    '<div class="module-unit-row-synopsis">' .
-                       $unit[2] . '</div>' . "\n";
-  
+                Module::RenderModuleUnitContent($unitHRef, $unit[1], $unit[2],
+                                                $unit[3], $unit[4], $unit[5],
+                                                $unit[6]);
             $totalTime += $unit[3];
             if ($unit[6] != null) {
                 $pointsEarned += $unit[5];
-                $unitList = $unitList .
-                            '<div class="module-unit-row-statistics">' .
-                              'Completed ' .
-                              Utility::FormatDate($unit[6]) .
-                              ', ' . $unit[5] . ' points earned' .
-                            '</div></div>' .
-                            '<a class="module-unit-row-complete" ' .
-                               'href="' . $unitHRef . '">' .
-                              '<svg xmlns="http://www.w3.org/2000/svg" ' .
-                                   'viewBox="0 0 24 24">' .
-                                '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 ' .
-                                         '21 7l-1.41-1.41L9 16.17z"/>' .
-                              '</svg>' .
-                            '</a>';
             } else {
                 $timeLeft += $unit[3];
-                $unitList = $unitList .
-                            '<div class="module-unit-row-statistics">' .
-                              Utility::FormatInterval($unit[3]) .
-                              ', ' . $unit[4] . ' points' .
-                            '</div></div>' . 
-                            '<a class="module-unit-row-incomplete" ' .
-                               'href="' . $unitHRef . '">' .
-                              '<svg xmlns="http://www.w3.org/2000/svg" ' .
-                                   'viewBox="0 0 24 24">' .
-                                '<path d="M12 4l-1.41 1.41L16.17 ' .
-                                         '11H4v2h12.17l-5.58 5.59L12 ' .
-                                         '20l8-8-8-8z"/>' .
-                              '</svg>' .
-                            '</a>';
             }
-
-            $unitList = $unitList . '</div>' . "\n";
         }
 
         /* Format progress or completion information */
@@ -222,37 +270,12 @@ class Module {
             $progress = $progress . ', ' . $pointsEarned . ' points earned';
         }
 
-        return '<div class="module-wrapper">' . "\n" .
-                 '<div class="module-header">' . "\n" .
-                   '<div class="module-header-badge">' . "\n" .
-                     '<img src="/badges/mod-' . $this->id . '.png" '.
-                          'alt="module badge"/>' . "\n" .
-                     (($this->completed == null) ? '' :
-                       '<svg xmlns="http://www.w3.org/2000/svg" ' .
-                            'viewBox="0 0 24 24">' .
-                         '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 ' .
-                                  '21 7l-1.41-1.41L9 16.17z"/>' .
-                       '</svg>' . "\n") .
-                   '</div>' . "\n" .
-                   '<div class="module-header-info">' .
-                     '<div class="module-header-row">' .
-                       '<div class="module-header-title">' .
-                         $this->title . '</div>' . "\n" .
-                       '<div class="module-header-points">' .
-                         $this->points . ' points</div>' . "\n" .
-                     '</div>' . "\n" .
-                     '<div class="module-header-synopsis">' .
-                       $this->synopsis . '</div>' . "\n" .
-                     '<div class="module-header-row">' .
-                       '<div class="module-header-progress">' .
-                         $progress .
-                       '</div>' .  $progbar .
-                     '</div>' . "\n" .
-                   '</div>' . "\n" .
-                 '</div>' . "\n" .
-                 '<div class="module-unit-list">' . "\n" .
-                     $unitList .
-                 '</div></div>';
+        return Module::RenderPMBanner('mod-' . $this->id, $this->title,
+                                      null, $this->synopsis, $this->points,
+                                      $progress, $progbar, $this->completed) .
+               '<div class="pathmod-unit-list">' . "\n" .
+                   $unitList .
+               '</div></div>';
     }
 }
 

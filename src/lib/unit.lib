@@ -665,7 +665,7 @@ class Unit {
 
         /* Easy exit if badge is completed */
         if ($modInfo[0][3] != null) {
-            return array('moduleBadge' => '/badges/' . $moduleId . '.png',
+            return array('moduleBadge' => '/badges/mod-' . $moduleId . '.png',
                          'moduleName' => $modInfo[0][1],
                          'pointsEarned' => $modInfo[0][2],
                          'progress' => 'Completed ' .
@@ -714,7 +714,7 @@ class Unit {
             $progress = Utility::FormatInterval($timeLeft) . ' remaining ';
         }
 
-        return array('moduleBadge' => '/badges/' . $modInfo[0][0] . '.png',
+        return array('moduleBadge' => '/badges/mod-' . $modInfo[0][0] . '.png',
                      'moduleName' => $modInfo[0][1],
                      'pointsEarned' => $pointsEarned,
                      'progress' => $progress,
