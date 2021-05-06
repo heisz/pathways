@@ -7,6 +7,98 @@
  */
 import React from 'react';
 
+/* Container struct for party time */
+interface Confetti {
+    /* The actual display element floating around the screen */
+    elmnt: HTMLDivElement;
+
+    /* 3D offset of confetti piece from root */
+    x: number;
+    y: number;
+    z: number;
+
+    /* Ejection vector from cannon with deceleration */
+    speed: number;
+    parAngle: number;
+    perpAngle: number;
+
+    /* Flutter and spin simulation */
+    flutter: number;
+    flutterRate: number;
+    spin: number;
+    spinRate: number;
+}
+
+/* Sometimes small victories should be celebrated */
+/* Note that this could be generalized but there's a specific design here */
+function tada(src: HTMLDivElement): void {
+    const colours = [ "#a864fd", "#29cdff", "#78ff44", "#ff718d", "#fdff6a" ];
+
+    /* Create the pieces of confetti */
+    let confetti = Array.from({ length: 100 }).map((x: any, idx: number) => {
+        /* Floating confetti, I mean div */
+        let elmnt: HTMLDivElement = document.createElement('div');
+        elmnt.style.width = elmnt.style.height = '10px';
+        elmnt.style.position = 'absolute';
+        elmnt.style.willChange = 'transform,opacity';
+        elmnt.style.backgroundColor = colours[idx % colours.length];
+        elmnt.style.visibility = 'hidden';
+        src.appendChild(elmnt);
+
+        return {
+            elmnt: elmnt,
+            x: 0, y: 0, z: 0,
+
+            /* Comes out at 80 degree cone around vertical */
+            speed: 50 * (0.5 + Math.random()),
+            parAngle: (-90 + (0.5 - Math.random()) * 80) * (Math.PI / 180),
+            perpAngle: (0.5 - Math.random()) * 70 * (Math.PI / 180),
+
+            /* Flutter and spin are 100% roationally random */
+            flutter: Math.random() * 2 * Math.PI,
+            flutterRate: 0.1 + Math.random() * 0.2,
+            spin: Math.random() * 2 * Math.PI,
+            spinRate: 0.1 + Math.random() * 0.2
+        };
+    });
+
+    /* Looping function to animate the confetti, 3s duration, 5ms apart */
+    let startTime: number = 0;
+    function animate(time: number) {
+        if (!startTime) startTime = time;
+        let progress: number = (time - startTime) / 3000;
+        if (progress > 1.0) progress = 1.0;
+        confetti.slice(0, Math.ceil((time - startTime) / 5)).forEach((piece) => {
+            /* Move one step in all dimensions, decelerating as we go */
+            piece.x += Math.cos(piece.parAngle) * piece.speed;
+            piece.y += Math.sin(piece.parAngle) * piece.speed + 3 /* fall! */;
+            let z: number = piece.z += Math.sin(piece.perpAngle) * piece.speed;
+            piece.speed = piece.speed * 0.9;
+            piece.flutter += piece.flutterRate;
+            let spin: number = piece.spin += piece.spinRate;
+
+            /* Transform and display appropriately */
+            let x: number = piece.x + 10 * Math.cos(piece.flutter);
+            let y: number = piece.y + 10 * Math.sin(piece.flutter);
+            piece.elmnt.style.visibility = 'visible';
+            piece.elmnt.style.transform = 
+                  `translate3d(${x}px,${y}px,${z}px) rotate3d(1,1,1,${spin}rad)`;
+            piece.elmnt.style.opacity = (1.0 - progress).toString();
+        });
+
+        /* Continue until timeout */
+        if (progress < 1.0) {
+            requestAnimationFrame(animate);
+        } else {
+            confetti.forEach((piece) => {
+                src.removeChild(piece.elmnt);
+            });
+        }
+    }
+
+    requestAnimationFrame(animate);
+}
+
 /* Inbound properties from the page */
 interface AssessorProps {
     unitURI: string;
@@ -32,6 +124,7 @@ interface ModuleProgressInfo {
     progress: string;
     nextUnitHRef: string;
     nextUnitName: string;
+    tada: boolean;
 }
 interface AssessmentState {
     /* Values from the initial load call to the server */
@@ -74,9 +167,15 @@ class Assessor extends React.Component<AssessorProps, AssessmentState> {
     /* Tracking element for error display */
     private errorSet?: {[key: string]: string[]} = null;
 
+    /* Tracking for attaching tada */
+    private modTitleRef: React.RefObject<HTMLDivElement>;
+
     /* This is awkward but need constructor for binding */
     constructor(props: AssessorProps) {
         super(props);
+
+        /* Reference to module tag for tada moments */
+        this.modTitleRef = React.createRef();
 
         /* Wowsers... */
         this.handleAnswerChange = this.handleAnswerChange.bind(this);
@@ -187,6 +286,11 @@ class Assessor extends React.Component<AssessorProps, AssessmentState> {
                     'moduleProgress': resp.moduleProgress
                 });
 
+                /* Time to party? */
+                if (resp.moduleProgress.tada) {
+                    setTimeout(() => { tada(this.modTitleRef.current); });
+                }
+
                 return;
             }
 
@@ -289,7 +393,8 @@ class Assessor extends React.Component<AssessorProps, AssessmentState> {
                          alt="module badge"/>
                   </div>
                   <div className="assessment-module-info">
-                    <div className="assessment-module-title">
+                    <div className="assessment-module-title"
+                         ref={this.modTitleRef}>
                       { this.state.moduleProgress.moduleName }
                     </div>
                     <div className="assessment-module-progress">

@@ -707,9 +707,11 @@ class Unit {
         $pct = intval(($totalTime - $timeLeft) * 100 / $totalTime);
 
         /* Need a tada! moment! */
+        $tada = false;
         if ($pct == 100) {
             $progress = 'Just completed! ' . 
                         $pointsEarned . ' points earned';
+            $tada = true;
         } else {
             $progress = Utility::FormatInterval($timeLeft) . ' remaining ';
         }
@@ -720,7 +722,8 @@ class Unit {
                      'progress' => $progress,
                      'progBar' => $pct,
                      'nextUnitHRef' => $nextUnitRef,
-                     'nextUnitName' => $nextUnitName);
+                     'nextUnitName' => $nextUnitName,
+                     'tada' => $tada);
     }
 }
 
