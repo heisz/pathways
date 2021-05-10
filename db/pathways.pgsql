@@ -119,6 +119,7 @@ CREATE TABLE pathways.answers (
 CREATE TABLE pathways.users (
     user_id VARCHAR(255) NOT NULL,
     user_name VARCHAR(255) NOT NULL,
+    avatar VARCHAR(255),
     can_preview BOOLEAN NOT NULL DEFAULT 'n',
     badge_count INT NOT NULL DEFAULT 0,
     total_points INT NOT NULL DEFAULT 0,

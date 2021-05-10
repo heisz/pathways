@@ -13,7 +13,7 @@ namespace Pathways;
  * Containers for quiz-based questions and answers.
  */
 class User {
-    public $id, $name, $canPreview, $badgeCount, $totalPoints;
+    public $id, $name, $avatar, $canPreview, $badgeCount, $totalPoints;
 
     /**
      * In this case, we are always pulling from the database.
@@ -22,7 +22,7 @@ class User {
         $schema = \Database::schema();
 
         /* Verify the user existence */
-        $qryStmt = \Database::prepare('SELECT user_name, can_preview,
+        $qryStmt = \Database::prepare('SELECT user_name, avatar, can_preview,
                                               badge_count, total_points ' .
                                       'FROM ' . $schema . 'users ' .
                                       'WHERE user_id=?');
@@ -31,9 +31,10 @@ class User {
         if (count($res) != 1) return;
         $this->id = $userId;
         $this->name = $res[0][0];
-        $this->canPreview = $res[0][1];
-        $this->badgeCount = $res[0][2];
-        $this->totalPoints = $res[0][3];
+        $this->avatar = $res[0][1];
+        $this->canPreview = $res[0][2];
+        $this->badgeCount = $res[0][3];
+        $this->totalPoints = $res[0][4];
     }
 
     /* Generate summary header for the current user */
@@ -55,9 +56,10 @@ class User {
                                 (($this->badgeCount != 1) ? 's' : '') . ', ' .
                            $this->totalPoints . ' points</div>' .
                '</span>' .
-               '<span class="header-user-gravatar">'.
-                   $gravatar .
-               '</span>';
+               '<a href="/profile" class="header-user-avatar">' .
+                   (($this->avatar == null) ?  $gravatar :
+                      '<img src="/avatars/' . $this->avatar . '"/>') .
+               '</a>';
     }
 
     /* Handy query bits for aggregating progress */
@@ -191,5 +193,100 @@ class User {
         }
 
         return $retval;
+    }
+
+    /* Library method to render earned badges for the user */
+    public function renderBadges() {
+        $schema = \Database::schema();
+
+        $qry = 'SELECT mod.module_id, mod.title, bdg.completed, bdg.points ' .
+               'FROM ' . $schema . 'modules as mod, ' .
+                         $schema . 'badges as bdg ' .
+               'WHERE bdg.module_id = mod.module_id AND ' .
+                     'bdg.user_id=? ' .
+               'ORDER BY bdg.completed DESC';
+                    
+        $qryStmt = \Database::prepare($qry);
+        $qryStmt->execute([ $this->id ]);
+
+        $content = '';
+        foreach ($qryStmt->fetchAll() as $bdg) {
+            $content .= '<div class="profile-badge">' .
+                          '<a href="/module/' . $bdg[0] . '">' .
+                            '<img src="/badges/mod-' . $bdg[0] . '.png" ' .
+                                 'alt="Module badge"/>' .
+                          '</a>' .
+                          '<div class="profile-badge-title">' .
+                                                  $bdg[1] . '</div>' .
+                          '<div class="profile-badge-comp">Completed ' .
+                                     Utility::FormatDate($bdg[2]) . '</div>' .
+                          '<div class="profile-badge-points">' .
+                                                  $bdg[3] . ' Points</div>' .
+                        '</div>';
+        }
+
+        return $content;
+    }
+
+    /* Update methods */
+    public function updateDisplayName($name) {
+        $schema = \Database::schema();
+
+        try {
+            $updStmt = \Database::prepare('UPDATE ' . $schema . 'users ' .
+                                          'SET user_name=? ' .
+                                          'WHERE user_id=?');
+            $updStmt->execute([ $name, $this->id ]);
+            $this->name = $name;
+            return true;
+        } catch (\PDOException $ex) {
+            error_log('Error updating display name: ' . $ex->getMessage());
+            return false;
+        }
+    }
+    private static function pathIsAbsolute($path) {
+        if (realpath($path) == $path) return true;
+        if ((strlen($path) == 0)|| ($path[0] === '.')) return false;
+        if (preg_match('#^[a-zA-Z]:\\\\#', $path)) return true;
+        return (($path[0] === '/') || ($path[0] === '\\'));
+    }
+    public function updateAvatar($srcName, $postFix) {
+        global $GlobalConfig;
+        $schema = \Database::schema();
+        $RootDir = dirname(dirname(__DIR__));
+
+        /* Determine the avatars storage directory */
+        $AssetsDir = $GlobalConfig['Pathways']['assets'];
+        if (!User::pathIsAbsolute($AssetsDir))
+                    $AssetsDir = $RootDir . '/' . $AssetsDir;
+        $AssetsDir = realpath($AssetsDir);
+        if (($AssetsDir === false) || (!is_dir($AssetsDir))) {
+            error_log('Invalid assets dir: ' . $AssetsDir);
+            return false;
+        }
+        $AvatarsDir = $AssetsDir . '/avatars';
+        if (!is_dir($AvatarsDir)) {
+            if (!mkdir($AvatarsDir)) {
+                error_log('Failed to create avatars directory');
+                return false;
+            }
+        }
+
+        /* Store the image instance and mark update */
+        if (!copy($srcName, $AvatarsDir . '/' . $this->id . '.' . $postFix)) {
+            error_log('Failed to copy uploaded avatar');
+            return false;
+        }
+        try {
+            $updStmt = \Database::prepare('UPDATE ' . $schema . 'users ' .
+                                          'SET avatar=? ' .
+                                          'WHERE user_id=?');
+            $updStmt->execute([ $this->id . '.' . $postFix, $this->id ]);
+            $this->name = $name;
+            return true;
+        } catch (\PDOException $ex) {
+            error_log('Error updating avatar: ' . $ex->getMessage());
+            return false;
+        }
     }
 }

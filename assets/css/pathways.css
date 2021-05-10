@@ -53,15 +53,21 @@ header {
     line-height: 1rem;
 }
 
-.header-user-gravatar {
+.header-user-avatar {
     border: 2px solid #d6d6d6;
     border-radius: 15rem;
     display: inline-flex;
     margin-left: 1rem;
     margin-right: 0.5rem;
+    overflow: hidden;
 }
 
-.header-user-gravatar svg {
+.header-user-avatar svg {
+    width: 2rem;
+    height: 2rem;
+}
+
+.header-user-avatar img {
     width: 2rem;
     height: 2rem;
 }
@@ -183,8 +189,161 @@ footer {
 
 /* TODO - use media queries with the grid */
 .home-summary-row {
-   display: flex;
-   flex-flow: wrap;
+    display: flex;
+    flex-flow: wrap;
+}
+
+/* ------------------------------------- */
+
+.profile-tabbar {
+    position: relative;
+    margin: 1rem 2rem;
+    margin-bottom: 0.25rem;
+}
+
+.profile-tablist {
+    position: relative;
+    display: flex;
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    z-index: 5;
+}
+
+.profile-tab {
+    transition-property: all;
+    transition-duration: 0.2s;
+    transition-timing-function: linear;
+    transition-delay: 0s;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+.profile-tab.tab-active {
+    transition-property: all;
+    transition-duration: 0.2s;
+    transition-timing-function: linear;
+    transition-delay: 0.05s;
+    color: #fff;
+}
+
+.profile-tabhighlight {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    background-color: #119da4;
+    border-radius: 3px;
+    z-index: 1;
+
+    /* Just a dummy starting position */
+    left: 0;
+}
+
+.profile-content {
+    margin: 0rem 2rem;
+    margin-bottom: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #119da4;
+}
+
+.profile-page {
+    display: none;
+}
+
+.profile-page.tab-active {
+    display: block;
+}
+
+.profile-badge-count {
+    font-size: 1.3rem;
+    margin-bottom: 0.5rem;
+}
+
+.profile-badges {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.profile-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0.5rem;
+    width: 13rem;
+}
+
+.profile-badge-title {
+    font-weight: 700;
+}
+
+.profile-badge-comp {
+    font-size: 0.9rem;
+}
+
+.profile-badge-points {
+    font-size: 0.9rem;
+}
+
+.profile-forms {
+    display: flex;
+    flex-flow: wrap;
+}
+
+.profile-forms form {
+    display: grid;
+    grid-template-columns: max-content max-content;
+    grid-row-gap: 0.25rem;
+    row-gap: 0.5rem;
+    margin-right: 2em;
+    margin-bottom: 2em;
+}
+
+.profile-form-label {
+    display: inline-block;
+    font-size: 0.9rem;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+    text-align: right;
+    padding-top: 0.3rem;
+}
+
+.profile-form-error {
+    color: #ff0000;
+    font-size: 0.7rem;
+}
+
+.profile-text-input {
+    border: 1px solid #e2e2e2;
+    background-color: white;
+    border-radius: 0.25rem;
+    padding: 0.3rem 0.75rem;
+    box-sizing: border-box;
+    line-height: 1.5rem;
+    font-size: 1rem;
+}
+
+.profile-file-input {
+    border: 1px solid #e2e2e2;
+    background-color: white;
+    border-radius: 0.25rem;
+    padding: 0.3rem 0.75rem;
+    box-sizing: border-box;
+    line-height: 1.5rem;
+    font-size: 1rem;
+}
+
+.profile-submit-row {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.profile-submit {
+    font-size: 1rem;
+    line-height: 1.5rem;
+    padding: 0.2rem 0.8rem;
+    border-radius: 0.25rem;
+    background-color: #119da4;
+    color: #ffffff;
 }
 
 /* ------------------------------------- */

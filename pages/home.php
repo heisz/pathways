@@ -77,4 +77,6 @@ if ((count($ipMods) == 0) && (count($ipPaths) == 0) && (count($newMods) == 0)) {
 
 echo '</div>' . "\n";
 
+include_once('src/inc/footer.inc');
+
 ?>

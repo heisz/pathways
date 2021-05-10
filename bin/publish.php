@@ -17,8 +17,8 @@ require('src/lib/path.lib');
 
 /* Determine the assets directory and build publishing structures */
 function pathIsAbsolute($path) {
-    if (realpath( $path ) == $path) return true;
-    if ((strlen( $path ) == 0)|| ($path[0] === '.')) return false;
+    if (realpath($path) == $path) return true;
+    if ((strlen($path) == 0)|| ($path[0] === '.')) return false;
     if (preg_match('#^[a-zA-Z]:\\\\#', $path)) return true;
     return (($path[0] === '/') || ($path[0] === '\\'));
 }
