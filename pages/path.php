@@ -25,6 +25,13 @@ try {
         http_response_code(404 /* Not found */);
         exit();
     }
+
+    /* Watch for snoopers */
+    if (($path->inPreview) && (!$User->canPreview)) {
+        /* Hand off response error to upstream wrapper */
+        http_response_code(403 /* Forbidden */);
+        exit();
+    }
 } catch (\PDOException $ex) {
     error_log('Path resolve error: ' . $ex->getMessage());
     error_log('Check for proper database setup');

@@ -88,7 +88,7 @@ class Question {
                 array_push($this->answers, $ans);
                 $ans->id = 'a' . count($this->answers);
             } else {
-                throw new \ErrorException( 
+                throw new \ErrorException(
                                '<Question>s can only contain <Answer>s');
             }
         }
@@ -125,7 +125,7 @@ class Unit {
 
     /**
      * Main constructor either consumes an XML document node for definition or
-     * a unit identifier to load from the database, along with the parent 
+     * a unit identifier to load from the database, along with the parent
      * module identifier.
      */
     public function __construct($src = null, $moduleId = null) {
@@ -196,7 +196,7 @@ class Unit {
                 if ($this->content == null) {
                     $this->content = (string) $child;
                 } else {
-                    throw new \ErrorException( 
+                    throw new \ErrorException(
                                'Multiple <Content> elements within <Unit>');
                 }
             } else if ($nm == 'Assessment') {
@@ -220,7 +220,7 @@ class Unit {
                     $this->questions = [];
                     foreach ($child->children() as $chld) {
                         if ($chld->getName() != 'Question') {
-                            throw new \ErrorException( 
+                            throw new \ErrorException(
                                 'Quiz assessments can only contain <Question>');
                         }
                         $quest = new Question($chld);
@@ -228,7 +228,7 @@ class Unit {
                         $quest->id = 'q' . count($this->questions);
                     }
                     if (count($this->questions) == 0) {
-                        throw new \ErrorException( 
+                        throw new \ErrorException(
                             'Quiz assessments need at least one <Question>');
                     }
                 } else {
@@ -238,23 +238,23 @@ class Unit {
                             if ($this->setup == null) {
                                 $this->setup = (string) $chld;
                             } else {
-                                throw new \ErrorException( 
+                                throw new \ErrorException(
                                        'Multiple <Setup> in lab assessment');
                             }
                         } else if ($chld->getName() == 'Activity') {
                             if ($this->activity == null) {
                                 $this->activity = (string) $chld;
                             } else {
-                                throw new \ErrorException( 
+                                throw new \ErrorException(
                                        'Multiple <Activity> in lab assessment');
                             }
                         } else {
-                            throw new \ErrorException( 
+                            throw new \ErrorException(
                                'Lab assesments contain only <Setup|Activity>');
                         }
                     }
                     if ($this->activity == null) {
-                        throw new \ErrorException( 
+                        throw new \ErrorException(
                             'Lab assessments need an <Activity>');
                     }
                 }
@@ -264,7 +264,7 @@ class Unit {
             }
         }
         if ($this->content == null) {
-            throw new \ErrorException( 
+            throw new \ErrorException(
                           '<Unit> missing <Content> child');
         }
     }
@@ -346,7 +346,7 @@ class Unit {
                                 $this->points, $this->setup, $this->activity,
                                 $this->moduleId, $this->id ]);
             if ($updStmt->rowCount() != 1) {
-                throw new \ErrorException( 
+                throw new \ErrorException(
                                'Failed to update path, target not found?');
             }
 
@@ -560,35 +560,37 @@ class Unit {
             }
         }
 
-        /* Record attempts (failures) in either case */
+        /* Record attempts (failures) in either case (unless in preview) */
         if (($errorCount != 0) || ($errorMsg != null)) {
-            if ($failures == 0) {
-                $insStmt = \Database::prepare(
-                                  'INSERT INTO ' . $schema . 'assessments' .
-                                  '(user_id, module_id, unit_id, ' .
-                                   'failures, points) '  .
-                                  'VALUES(?, ?, ?, ?, 0)');
-                $insStmt->execute([ $UserId, $moduleId, $unitId, 1 ]);
+            if (!$inPreview) {
+                if ($failures == 0) {
+                    $insStmt = \Database::prepare(
+                                      'INSERT INTO ' . $schema . 'assessments' .
+                                      '(user_id, module_id, unit_id, ' .
+                                       'failures, points) '  .
+                                      'VALUES(?, ?, ?, ?, 0)');
+                    $insStmt->execute([ $UserId, $moduleId, $unitId, 1 ]);
 
-                $failures = 1;
-            } else {
-                $updStmt = \Database::prepare(
-                                  'UPDATE ' . $schema . 'assessments ' .
-                                  'SET failures=failures+1 ' .
-                                  'WHERE user_id=? AND module_id=? AND ' .
-                                        'unit_id=?');
-                $updStmt->execute([ $UserId, $moduleId, $unitId ]);
-                $failures++;
+                    $failures = 1;
+                } else {
+                    $updStmt = \Database::prepare(
+                                      'UPDATE ' . $schema . 'assessments ' .
+                                      'SET failures=failures+1 ' .
+                                      'WHERE user_id=? AND module_id=? AND ' .
+                                            'unit_id=?');
+                    $updStmt->execute([ $UserId, $moduleId, $unitId ]);
+                    $failures++;
 
-                /* Watch for cheaters */
-                $qryStmt = \Database::prepare(
-                                  'SELECT failures ' .
-                                  'FROM ' . $schema . 'assessments ' .
-                                  'WHERE user_id=? AND module_id=? AND ' .
-                                        'unit_id=?');
-                $qryStmt->execute([ $UserId, $moduleId, $unitId ]);
-                $userInfo = $qryStmt->fetchAll();
-                if (count($userInfo) != 0) $failures = $userInfo[0][0];
+                    /* Watch for cheaters */
+                    $qryStmt = \Database::prepare(
+                                      'SELECT failures ' .
+                                      'FROM ' . $schema . 'assessments ' .
+                                      'WHERE user_id=? AND module_id=? AND ' .
+                                            'unit_id=?');
+                    $qryStmt->execute([ $UserId, $moduleId, $unitId ]);
+                    $userInfo = $qryStmt->fetchAll();
+                    if (count($userInfo) != 0) $failures = $userInfo[0][0];
+                }
             }
 
             return array('status' => 'error',
@@ -598,6 +600,13 @@ class Unit {
                          'errors' => $errorCount,
                          'errorMsg' => $errorMsg,
                          'incorrect' => $info);
+        }
+
+        /* Bypass recording if in preview */
+        if ($inPreview) {
+            return array('status'=> 'correct',
+                         'points' => 0,
+                         'moduleProgress' => Unit::getModuleProgress($moduleId));
         }
 
         /* If we get to here, assessment has been completed! Woohoo! */
@@ -709,7 +718,7 @@ class Unit {
         /* Need a tada! moment! */
         $tada = false;
         if ($pct == 100) {
-            $progress = 'Just completed! ' . 
+            $progress = 'Just completed! ' .
                         $pointsEarned . ' points earned';
             $tada = true;
         } else {

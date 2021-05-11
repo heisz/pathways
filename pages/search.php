@@ -56,7 +56,8 @@ $qry = 'SELECT \'mod\', mod.module_id, mod.title, mod.synopsis, mod.points, ' .
                'mod.est_time, MAX(ast.completed), ' . $modAgg . ' ' .
                'FROM ' . $schema . 'modules AS mod ' .
                Pathways\User::ModJoin() .
-               'WHERE ' . $modWhere . ' ' .
+               'WHERE ' . $modWhere . ' AND ' .
+                      '(mod.in_preview = \'f\') ' .
                'GROUP BY mod.module_id ' .
        'UNION ' .
        'SELECT \'path\', pth.path_id, pth.title, pth.synopsis, pth.points, ' .
@@ -67,7 +68,8 @@ $qry = 'SELECT \'mod\', mod.module_id, mod.title, mod.synopsis, mod.points, ' .
                'JOIN ' . $schema . 'modules AS mod ' .
                  'ON (pst.module_id=mod.module_id) ' .
                Pathways\User::ModJoin() .
-               'WHERE ' . $pathWhere . ' ' .
+               'WHERE ' . $pathWhere . ' AND ' .
+                      '(pth.in_preview = \'f\') ' .
                'GROUP BY pth.path_id';
 $qryStmt = \Database::prepare($qry);
 $qryStmt->execute([ $User->id, $User->id, $User->id, $User->id ]);
