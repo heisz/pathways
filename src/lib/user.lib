@@ -313,11 +313,12 @@ class User {
             return false;
         }
         try {
+            $avatar = $this->id . '.' . $postFix;
             $updStmt = \Database::prepare('UPDATE ' . $schema . 'users ' .
                                           'SET avatar=? ' .
                                           'WHERE user_id=?');
-            $updStmt->execute([ $this->id . '.' . $postFix, $this->id ]);
-            $this->name = $name;
+            $updStmt->execute([ $avatar, $this->id ]);
+            $this->avatar = $avatar;
             return true;
         } catch (\PDOException $ex) {
             error_log('Error updating avatar: ' . $ex->getMessage());
