@@ -11,5 +11,5 @@ namespace Pathways;
 
 /* Based on the <module>:<unit> key, return null for success or error message */
 function LabVerify($modUnitKey) {
-    return null;
+    return 'Unrecognized module/unit, need to write verifier';
 }
