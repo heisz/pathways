@@ -34,8 +34,8 @@ if (count($ipMods) != 0) {
     echo '<div class="home-header">In-Progress Modules</div>' . "\n" .
          '<div class="home-summary-row">' . "\n";
     foreach($ipMods as $mod) {
-        echo '<a class="pmcell-link" href="/module/' . $mod['id'] . '">' . "\n" .
-                Pathways\Utility::FormatPathModCell($mod) . "\n" .
+        echo '<a class="pmcell-link" href="/module/' . $mod['id'] . '">' .
+                "\n" .  Pathways\Utility::FormatPathModCell($mod) . "\n" .
              '</a>' . "\n";
     }
     echo '</div>' . "\n";
@@ -60,8 +60,21 @@ if (count($newMods) != 0) {
     echo '<div class="home-header">Newest Modules</div>' . "\n" .
          '<div class="home-summary-row">' . "\n";
     foreach($newMods as $mod) {
-        echo '<a class="pmcell-link" href="/module/' . $mod['id'] . '">' . "\n" .
-                Pathways\Utility::FormatPathModCell($mod) . "\n" .
+        echo '<a class="pmcell-link" href="/module/' . $mod['id'] . '">' .
+                "\n" . Pathways\Utility::FormatPathModCell($mod) . "\n" .
+             '</a>' . "\n";
+    }
+    echo '</div>' . "\n";
+}
+
+/* Preview items */
+$previews = $User->previewModules(3);
+if (count($previews) != 0) {
+    echo '<div class="home-header">Preview Modules</div>' . "\n" .
+         '<div class="home-summary-row">' . "\n";
+    foreach($previews as $mod) {
+        echo '<a class="pmcell-link" href="/module/' . $mod['id'] . '">' .
+                "\n" . Pathways\Utility::FormatPathModCell($mod) . "\n" .
              '</a>' . "\n";
     }
     echo '</div>' . "\n";

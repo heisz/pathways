@@ -198,6 +198,38 @@ class User {
         return $retval;
     }
 
+    /* Entry point for reviewing preview modules */
+    public function previewModules($limit, $offset = 0) {
+        $schema = \Database::schema();
+
+        if (!$this->canPreview) return [];
+
+        /* Simpler all the time */
+        $qry = 'SELECT mod.module_id, mod.title, mod.synopsis, mod.points, ' .
+                      'mod.est_time ' .
+               'FROM ' . $schema . 'modules AS mod ' .
+               'WHERE mod.in_preview=\'t\' ' .
+               'ORDER BY mod.last_update DESC '  .
+               'OFFSET ' . $offset . ' ' .
+               'LIMIT ' . $limit;
+        $qryStmt = \Database::prepare($qry);
+
+        $retval = [];
+        $qryStmt->execute();
+        foreach ($qryStmt->fetchAll() as $mod) {
+            $rem = Utility::FormatInterval($mod[4]);
+            array_push($retval, array(
+                         'id' => $mod[0],
+                         'icon' => '/badges/mod-' . $mod[0] . '.png',
+                         'title' => $mod[1],
+                         'synopsis' => $mod[2],
+                         'points' => $mod[3],
+                         'progress' => $rem));
+        }
+
+        return $retval;
+    }
+
     /* Library method to render earned badges for the user */
     public function renderBadges() {
         $schema = \Database::schema();

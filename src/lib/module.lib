@@ -71,6 +71,14 @@ class Module {
                            'Missing required XML attributes for <Module>');
         }
 
+        /* And optional ones */
+        $this->inPreview = $node['preview'];
+        if (($this->inPreview == null) || ($this->inPreview != 'no')) {
+            $this->inPreview = true;
+        } else {
+            $this->inPreview = false;
+        }
+
         /* Only children can be units */
         $this->units = [];
         foreach ($node->children() as $child) {
