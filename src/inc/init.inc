@@ -83,9 +83,9 @@ try {
 
 /* Resolve user information for non-CLI (publish) environment */
 if (!$isCLI) {
-
-    /* TODO - integration user_id determination here! */
-    $UserId = 'test';
+    /* TODO - if needed, integrate alternative authorization here */
+    /* By default, presume X-WEBAUTH-USER provided by proxy wrapper */
+    $UserId = $_SERVER['X-WEBAUTH-USER'];
 
     /* Verify and retrieve user information for display */
     try {
