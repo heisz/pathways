@@ -9,7 +9,7 @@ import React from 'react';
 
 /* Inbound properties from the page */
 interface SearchProps {
-    searchURI: string;
+    searchQuery: string;
     placeholder: string;
 }
 
@@ -39,7 +39,14 @@ class Search extends React.Component<SearchProps, SearchState> {
               </svg>
             </span>
             <input className="search-input" type="search" size={60}
-                   placeholder={ this.props.placeholder }/>
+                   placeholder={ this.props.placeholder }
+                   defaultValue={ this.props.searchQuery }
+                   onKeyDown={ (ev: React.KeyboardEvent<HTMLInputElement>) => {
+                       if (ev.keyCode == 13) {
+                           window.location.href =
+                              '/search?srch_qry=' + (ev.target as any).value;
+                       }
+                   } }/>
           </span>
         );
     }

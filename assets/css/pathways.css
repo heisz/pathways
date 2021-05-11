@@ -165,6 +165,7 @@ footer {
     padding: 0.5rem;
     background: #3560a5;
     color: #ffffff;
+    margin: 1rem;
 }
 
 .home-welcome-header a {
@@ -593,6 +594,95 @@ footer {
     white-space: nowrap;
     border: none;
     outline: 1px solid transparent;
+}
+
+.search-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem;
+    background: #3560a5;
+    color: #ffffff;
+    margin: 1rem;
+}
+
+.search-content {
+   padding: 2rem 10rem;
+   padding-top: 0;
+   background-color: #fffaf3;
+}
+
+.search-card-link {
+    text-decoration: none;
+}
+
+.search-card {
+    display: flex;
+    margin-top: 2rem;
+    padding: 1rem;
+    box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.1);
+    background-color: #ffffff;
+}
+
+.search-card-badge {
+    margin-right: 1rem;
+    position: relative;
+}
+
+.search-card-badge svg {
+    position: absolute;
+    top: -0.2rem;
+    right: -0.2rem;
+    width: 1.0rem;
+    height: 1.0rem;
+    padding: 0.25rem;
+    border-radius: 15rem;
+    fill: #ffffff;
+    background-color: #049454;
+    border: 2px solid #ffffff;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.search-card-info {
+    flex-grow: 1;
+}
+
+.search-highlight {
+    background-color: #ffff00;
+}
+
+.search-card-title-row {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.search-card-title {
+    font-weight: 700;
+    font-size: 1.5rem;
+    line-height: 2rem;
+}
+
+.search-card-points {
+    color: #048149;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.search-card-synopsis {
+    font-weight: 500;
+    font-size: 1rem;
+    color: #606060;
+}
+
+.search-card-progress {
+    color: #606060;
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 /* ------------------------------------- */

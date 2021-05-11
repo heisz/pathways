@@ -51,7 +51,9 @@ if ($PageTitle == '') $PageTitle = 'Pathways';
       <script type="text/javascript">
           Pathways.ReactDOM.render(
               Pathways.React.createElement(Pathways.Search,
-                  { 'searchURI': '',
+                  { 'searchQuery': '<?php 
+                       echo ($searchQuery == null) ? '' : $searchQuery;
+                     ?>',
                     'placeholder': 'Open your mind...' }),
               document.getElementById('header-search')
           );

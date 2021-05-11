@@ -68,7 +68,7 @@ class User {
     const AGG_MOD_INC = 'COALESCE(sum(un.est_time) ' .
                                  'FILTER (WHERE (bdg.points IS NULL) AND ' .
                                                '(ast.points IS NOT NULL)), 0)';
-    private static function ModJoin() {
+    public static function ModJoin() {
         $schema = \Database::schema();
 
         return 'JOIN ' . $schema . ' units AS un ' .
