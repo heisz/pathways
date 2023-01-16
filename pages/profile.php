@@ -2,7 +2,7 @@
 /*
  * Management page for user profile information.
  *
- * Copyright (C) 2020-2021 J.M. Heisz.  All Rights Reserved.
+ * Copyright (C) 2020-2023 J.M. Heisz.  All Rights Reserved.
  * See the LICENSE file accompanying the distribution your rights to use
  * this software.
  */
@@ -95,7 +95,7 @@ include_once('src/inc/header.inc');
           <input class="profile-text-input" type="text" name="displayname"
                  value="<?php echo htmlspecialchars($User->name);?>"
                  size="50"/>
-          <?php if ($dispNameError != null) { ?>
+          <?php if (isset($dispNameError)) { ?>
             <div class="profile-form-error">
               <?php echo $dispNameError; ?>
             </div>
@@ -112,7 +112,7 @@ include_once('src/inc/header.inc');
         <div>
           <input class="profile-file-input" type="file" name="avatar"
                  size="50"/>
-          <?php if ($avatarError != null) { ?>
+          <?php if (isset($avatarError)) { ?>
             <div class="profile-form-error">
               <?php echo $avatarError; ?>
             </div>

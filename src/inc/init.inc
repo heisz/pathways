@@ -2,7 +2,7 @@
 /*
  * First-level inclusion file for all PHP pages for setup/initialization.
  *
- * Copyright (C) 2020-2021 J.M. Heisz.  All Rights Reserved.
+ * Copyright (C) 2020-2023 J.M. Heisz.  All Rights Reserved.
  * See the LICENSE file accompanying the distribution your rights to use
  * this software.
  */
@@ -32,7 +32,7 @@ class Database {
         /* Create the PDO with exceptions as the *default* */
         $dbInfo = $GlobalConfig['Database'];
         $pdo = new \PDO($dbInfo['dsn'], $dbInfo['user'], $dbInfo['password'],
-                        $config['DatabaseOptions']);
+                        $GlobalConfig['DatabaseOptions']);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $attr = $GlobalConfig['DatabaseAttributes'];
         foreach ($attr as $key => $val) {

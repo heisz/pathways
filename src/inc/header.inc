@@ -2,7 +2,7 @@
 /*
  * Common header formatting for all of the pathways HTML content.
  *
- * Copyright (C) 2020-2021 J.M. Heisz.  All Rights Reserved.
+ * Copyright (C) 2020-2023 J.M. Heisz.  All Rights Reserved.
  * See the LICENSE file accompanying the distribution your rights to use
  * this software.
  */
@@ -13,7 +13,7 @@ header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
-if ($PageTitle == '') $PageTitle = 'Pathways';
+if (!isset($PageTitle)) $PageTitle = 'Pathways';
 ?>
 
 <!doctype html>
@@ -52,7 +52,7 @@ if ($PageTitle == '') $PageTitle = 'Pathways';
           Pathways.ReactDOM.render(
               Pathways.React.createElement(Pathways.Search,
                   { 'searchQuery': '<?php 
-                       echo ($searchQuery == null) ? '' : $searchQuery;
+                       echo ((!isset($searchQuery))) ? '' : $searchQuery;
                      ?>',
                     'placeholder': 'Open your mind...' }),
               document.getElementById('header-search')

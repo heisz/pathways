@@ -2,7 +2,7 @@
 /*
  * Set of common utility methods for the pathways output rendering.
  *
- * Copyright (C) 2020-2021 J.M. Heisz.  All Rights Reserved.
+ * Copyright (C) 2020-2023 J.M. Heisz.  All Rights Reserved.
  * See the LICENSE file accompanying the distribution your rights to use
  * this software.
  */
@@ -51,19 +51,18 @@ class Utility {
                  '</div>' .
                  '<div class="pmcell-title">' . $pm['title'] . '</div>' .
                  '<div class="pmcell-synopsis">' . $pm['synopsis'] . '</div>';
-        if ($pm['complete']) {
+        if (!array_key_exists('complete', $pm)) {
+            $val = $val .
+               '<div class="pmcell-progrow">' .
+                   '<div class="pmcell-progress">'.
+                                  $pm['progress'] . ' total</div>' .
+               '</div>';
         } else if ($pm['complete'] === false) {
             $val = $val .
                '<div class="pmcell-progrow">' .
                    '<div class="pmcell-progress">'.
                                   $pm['progress'] . ' remaining</div>' .
                    $pm['progbar'] .
-               '</div>';
-        } else {
-            $val = $val .
-               '<div class="pmcell-progrow">' .
-                   '<div class="pmcell-progress">'.
-                                  $pm['progress'] . ' total</div>' .
                '</div>';
         }
         return $val . '</div>';
