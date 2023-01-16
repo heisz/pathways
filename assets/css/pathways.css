@@ -500,6 +500,28 @@ footer {
     box-sizing: border-box;
 }
 
+.unit-note {
+    padding: 1rem;
+    margin: 0.5rem 1rem;
+    background: #fffcdd;
+}
+
+.unit-content code {
+    color: #e8003a;
+    background-color: #f6f6f6;
+    border: 1px solid #808080;
+    padding: 1.5px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+.unit-content pre {
+    background-color: #f6f6f6;
+    border-left: 5px solid #e0e0e0;
+    padding-left: 1em;
+    border-radius: 8px;
+}
+
 .sidebar-wrapper {
     position: sticky;
     top: 2em;
@@ -915,7 +937,7 @@ footer {
 }
 
 .assessment-labsection-wrapper {
-    margin-left: 1.5rem;
+    margin: 0 1.5rem;
 }
 
 .assessment-labsection-wrapper h3 {
